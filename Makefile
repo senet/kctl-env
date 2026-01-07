@@ -4,9 +4,10 @@
 PREFIX ?= /usr/local
 LIBDIR := $(PREFIX)/lib/kctl-env
 BINDIR := $(PREFIX)/bin
-VERSION ?= $(shell git describe --tags --abbrev=0 2>/dev/null || echo 0.1.0)
+# Project semantic version from VERSION file
+VERSION ?= $(shell cat VERSION 2>/dev/null || echo 0.1.0)
 
-.PHONY: all install uninstall dist clean
+.PHONY: all install uninstall dist clean release
 
 all:
 	@echo "Nothing to build; scripts only"
@@ -34,3 +35,9 @@ dist:
 
 clean:
 	rm -rf dist
+
+# Prepare a release by updating VERSION and packaging metadata, and committing changes.
+# Usage: make release V=0.1.1
+release:
+	@if [ -z "$(V)" ]; then echo "Missing V. Usage: make release V=0.1.1" >&2; exit 1; fi
+	@./scripts/release.sh "$(V)"

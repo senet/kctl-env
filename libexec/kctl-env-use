@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+KCTL_ENV_ROOT="${KCTL_ENV_ROOT:-$HOME/.kctl-env}"
+version_file="$KCTL_ENV_ROOT/version"
+
+version="${1:-}"
+if [[ -z "$version" ]]; then
+  echo "Usage: kctl-env use <version|latest|auto>" >&2
+  exit 1
+fi
+
+# Allow raw versions or keywords
+case "$version" in
+  auto|latest|stable|v*) : ;; # accept
+  *) version="v$version" ;;
+esac
+
+echo "$version" > "$version_file"
+echo "kctl-env: set global version to '$version'"

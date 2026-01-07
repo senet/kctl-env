@@ -1,0 +1,16 @@
+# Build/runtime caches and temp
+cache/
+tmp/
+testhome/
+
+# Installed kubectl binaries (managed at runtime)
+versions/**
+!versions/.gitkeep
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/

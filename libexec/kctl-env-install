@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+KCTL_ENV_ROOT="${KCTL_ENV_ROOT:-$HOME/.kctl-env}"
+KCTL_VERSIONS="$KCTL_ENV_ROOT/versions"
+KCTL_CACHE="$KCTL_ENV_ROOT/cache"
+
+version_arg="${1:-}"
+if [[ -z "$version_arg" ]]; then
+  echo "Usage: kctl-env install <version|latest|stable>" >&2
+  exit 1
+fi
+
+# Resolve version string
+resolve_version() {
+  local v="$1"
+  if [[ "$v" == "latest" || "$v" == "stable" ]]; then
+    curl -fsSL https://dl.k8s.io/release/stable.txt
+    return 0
+  fi
+  # ensure leading v
+  if [[ "$v" =~ ^v ]]; then
+    echo "$v"
+  else
+    echo "v$v"
+  fi
+}
+
+# OS and ARCH detection
+os="$(uname -s)"
+case "$os" in
+  Linux) os="linux" ;;
+  Darwin) os="darwin" ;;
+  *) echo "Unsupported OS: $os" >&2; exit 1 ;;
+esac
+
+arch_override="${KCTL_ARCH:-}"
+if [[ -n "$arch_override" ]]; then
+  arch="$arch_override"
+else
+  m="$(uname -m)"
+  case "$m" in
+    x86_64|amd64) arch="amd64" ;;
+    arm64|aarch64) arch="arm64" ;;
+    *) echo "Unsupported ARCH: $m" >&2; exit 1 ;;
+  esac
+fi
+
+version="$(resolve_version "$version_arg")"
+
+# Compose URLs
+url_base="https://dl.k8s.io/release/$version/bin/$os/$arch"
+kubectl_url="$url_base/kubectl"
+kubectl_sha_url="$url_base/kubectl.sha256"
+
+# Prepare dirs
+mkdir -p "$KCTL_VERSIONS/$version" "$KCTL_CACHE"
+tmpdir="$(mktemp -d)"
+trap 'rm -rf "$tmpdir"' EXIT
+
+# Try to get sha256 first to detect availability; fallback to amd64 when KCTL_ARCH=amd64 is set
+if ! curl -fsSL "$kubectl_sha_url" -o "$tmpdir/kubectl.sha256" ; then
+  if [[ "${KCTL_ARCH:-}" == "amd64" ]]; then
+    arch="amd64"
+    url_base="https://dl.k8s.io/release/$version/bin/$os/$arch"
+    kubectl_url="$url_base/kubectl"
+    kubectl_sha_url="$url_base/kubectl.sha256"
+    curl -fsSL "$kubectl_sha_url" -o "$tmpdir/kubectl.sha256"
+  else
+    echo "kctl-env: binary not found for $version $os/$arch. Set KCTL_ARCH=amd64 to allow Rosetta fallback." >&2
+    exit 1
+  fi
+fi
+
+# Download binary after sha256 fetched
+curl -fsSL "$kubectl_url" -o "$tmpdir/kubectl"
+# sha256sum expects "<sum>  <file>" format
+if ! ( echo "$(cat "$tmpdir/kubectl.sha256")  $tmpdir/kubectl" | sha256sum -c - >/dev/null ); then
+  echo "kctl-env: checksum verification failed for $version" >&2
+  exit 1
+fi
+
+install_dir="$KCTL_VERSIONS/$version"
+mkdir -p "$install_dir"
+mv "$tmpdir/kubectl" "$install_dir/kubectl"
+chmod +x "$install_dir/kubectl"
+
+# Maintain a 'latest' symlink for convenience when installing latest/stable
+if [[ "$version_arg" == "latest" || "$version_arg" == "stable" ]]; then
+  ln -sfn "$install_dir" "$KCTL_VERSIONS/latest"
+fi
+
+echo "Installed kubectl $version ($os/$arch) to $install_dir"

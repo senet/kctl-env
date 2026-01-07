@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# List available kubectl releases from dl.k8s.io
+# Zero-deps: parse HTML index
+
+curl -fsSL https://dl.k8s.io/release/ |
+  grep -Eo 'v[0-9]+\.[0-9]+\.[0-9]+' |
+  sort -Vr |
+  uniq

@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+KCTL_ENV_ROOT="${KCTL_ENV_ROOT:-$HOME/.kctl-env}"
+LIBEXEC="$KCTL_ENV_ROOT/libexec"
+
+usage() {
+  cat <<EOF
+kctl-env: kubectl version manager
+
+Usage:
+  kctl-env install <version|latest|stable>
+  kctl-env use <version|latest|auto>
+  kctl-env list-remote
+  kctl-env help
+
+Environment:
+  KCTL_ENV_ROOT   Root directory (default: $HOME/.kctl-env)
+  KCTL_ARCH       Override architecture (amd64/arm64)
+EOF
+}
+
+cmd_install() {
+  "$LIBEXEC/kctl-env-install" "$@"
+}
+
+cmd_use() {
+  "$LIBEXEC/kctl-env-use" "$@"
+}
+
+cmd_list_remote() {
+  "$LIBEXEC/kctl-env-list-remote" "$@"
+}
+
+main() {
+  local cmd="${1:-}"; shift || true
+  case "$cmd" in
+    install) cmd_install "$@" ;;
+    use) cmd_use "$@" ;;
+    list-remote|list_remote) cmd_list_remote "$@" ;;
+    help|--help|-h|"") usage ;;
+    *) echo "kctl-env: unknown command '$cmd'" >&2; usage; exit 1 ;;
+  esac
+}
+
+main "$@"

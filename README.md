@@ -87,6 +87,17 @@ Pure Bash, zero-deps kubectl version manager with fast shims and tfenv-style UX.
 - Apple Silicon: set `KCTL_ARCH=amd64` when installing older versions lacking arm64 builds to use Rosetta emulation.
 - Auto mode cache TTL can be tuned with `KCTL_CLUSTER_TTL` (default: 300 seconds).
 
+## Roadmap & TODO
+
+Next 6 months: Month 1—CI across Ubuntu/macOS/WSL, release automation, and security hardening.
+Months 2–3—shell completions, offline/mirror mode, and post-switch hooks.
+Months 4–6—distribution (Homebrew, Debian/RPM), performance profiling (<10ms shim), optional plugin system.
+Progress tracked via GitHub Issues/Projects.
+
+## Changelog
+
+All notable changes are recorded in `CHANGELOG.md`. For any PR that changes behavior or introduces features, please update `CHANGELOG.md` accordingly.
+
 ## Roadmap
 
 - Improve remote version discovery and filtering for pre-releases.

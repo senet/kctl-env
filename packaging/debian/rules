@@ -1,0 +1,20 @@
+#!/usr/bin/make -f
+
+# minimal dh-based rules; copies scripts to /usr/lib/kctl-env and symlinks to /usr/bin
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	# nothing to build
+	dh_auto_build || true
+
+override_dh_auto_install:
+	mkdir -p debian/kctl-env/usr/lib/kctl-env/bin
+	mkdir -p debian/kctl-env/usr/lib/kctl-env/libexec
+	install -m 0755 bin/kctl-env debian/kctl-env/usr/lib/kctl-env/bin/kctl-env
+	install -m 0755 bin/kubectl debian/kctl-env/usr/lib/kctl-env/bin/kubectl
+	install -m 0755 libexec/* debian/kctl-env/usr/lib/kctl-env/libexec/
+	mkdir -p debian/kctl-env/usr/bin
+	ln -sf /usr/lib/kctl-env/bin/kctl-env debian/kctl-env/usr/bin/kctl-env
+	ln -sf /usr/lib/kctl-env/bin/kubectl debian/kctl-env/usr/bin/kubectl

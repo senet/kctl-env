@@ -1,0 +1,13 @@
+Source: kctl-env
+Section: utils
+Priority: optional
+Maintainer: kctl-env Maintainers <kctl-env@example.com>
+Standards-Version: 4.6.2
+Build-Depends: debhelper-compat (= 13)
+
+Package: kctl-env
+Architecture: all
+Depends: bash, curl, grep, sed, awk, coreutils
+Description: Pure Bash kubectl version manager with fast shims and tfenv-style UX
+ kctl-env manages kubectl versions per-project or globally, with context-aware
+ auto-switching and strict SHA256 verification of downloaded binaries.

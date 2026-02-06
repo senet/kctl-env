@@ -86,13 +86,13 @@ Pure Bash, zero-deps kubectl version manager with fast shims and tfenv-style UX.
 Bash:
 
 ```sh
-source "$KCTL_ENV_ROOT/etc/kctl-env-completion.bash"
+source "${KCTL_ENV_ROOT:-$HOME/.kctl-env}/etc/kctl-env-completion.bash"
 ```
 
 Zsh:
 
 ```sh
-source "$KCTL_ENV_ROOT/etc/kctl-env-completion.zsh"
+source "${KCTL_ENV_ROOT:-$HOME/.kctl-env}/etc/kctl-env-completion.zsh"
 ```
 
 ## Implementation Notes

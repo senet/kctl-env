@@ -32,7 +32,7 @@ if [[ -f "$changelog_file" ]]; then
     echo
     echo "  * Release $new_version"
     echo
-    echo " -- kctl-env Maintainers <kctl-env@example.com>  $change_date"
+    echo " -- kctl-env Maintainers <sen.net@hotmail.com>  $change_date"
     echo
     cat "$changelog_file"
   } > "$tmp"
@@ -44,7 +44,7 @@ spec_file="packaging/rpm/kctl-env.spec"
 if [[ -f "$spec_file" ]]; then
   sed -i "s/^Version:\s*.*/Version:        $new_version/" "$spec_file"
   # Update changelog
-  sed -i "1 a\\* $(date +"%a %b %d %Y") kctl-env Maintainers <kctl-env@example.com> - $new_version-1\\n- Release $new_version" "$spec_file"
+  sed -i "1 a\\* $(date +"%a %b %d %Y") kctl-env Maintainers <sen.net@hotmail.com> - $new_version-1\\n- Release $new_version" "$spec_file"
 fi
 
 # Commit changes

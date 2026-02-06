@@ -5,7 +5,10 @@
 set -euo pipefail
 
 # --- Config ---
-KCTL_ENV_ROOT="${KCTL_ENV_ROOT:-$HOME/.kctl-env}"
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+default_root="$(cd -- "$script_dir/.." && pwd)"
+
+KCTL_ENV_ROOT="${KCTL_ENV_ROOT:-$default_root}"
 KCTL_CACHE="$KCTL_ENV_ROOT/cache"
 KCTL_VERSIONS="$KCTL_ENV_ROOT/versions"
 KCTL_GLOBAL_VERSION_FILE="$KCTL_ENV_ROOT/version"

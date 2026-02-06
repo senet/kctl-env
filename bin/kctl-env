@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-KCTL_ENV_ROOT="${KCTL_ENV_ROOT:-$HOME/.kctl-env}"
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+default_root="$(cd -- "$script_dir/.." && pwd)"
+
+KCTL_ENV_ROOT="${KCTL_ENV_ROOT:-$default_root}"
 LIBEXEC="$KCTL_ENV_ROOT/libexec"
 
 usage() {

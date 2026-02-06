@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file. This project adheres to Semantic Versioning.
 
+## [Unreleased]
+### Added
+- `install.sh` bootstrap installer (installs kctl-env into `~/.kctl-env` or `$KCTL_ENV_ROOT`)
+- README “Quick install” section
+
 ## [v0.1.0] - 2026-01-07
 ### Added
 - Initial scaffold: bin/kubectl shim with env/.kubectl-version/global/auto resolution and TTL cache
@@ -15,3 +20,5 @@ All notable changes to this project will be documented in this file. This projec
 - Git repository initialized, branch protections configured (squash/rebase, linear history, delete branch on merge)
 
 [v0.1.0]: https://github.com/senet/kctl-env/releases/tag/v0.1.0
+
+[Unreleased]: https://github.com/senet/kctl-env/compare/v0.1.0...HEAD

@@ -1,6 +1,5 @@
-#compdef kctl-env
 # Zsh completion for kctl-env
-# Source from your shell rc:
+# Source this file from your shell rc:
 #   source /path/to/kctl-env/etc/kctl-env-completion.zsh
 
 _kctl_env__root() {
@@ -50,4 +49,4 @@ _kctl_env() {
   esac
 }
 
-_kctl_env "$@"
+compdef _kctl_env kctl-env

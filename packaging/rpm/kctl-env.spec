@@ -1,5 +1,7 @@
 Name:           kctl-env
-Version:        0.1.0
+* Sat Feb 07 2026 kctl-env Maintainers <kctl-env@example.com> - 0.1.1-1
+- Release 0.1.1
+Version:        0.1.1
 Release:        1%{?dist}
 Summary:        Pure Bash kubectl version manager with fast shims and tfenv-style UX
 License:        MIT

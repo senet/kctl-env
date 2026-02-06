@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file. This projec
 ### Added
 - `install.sh` bootstrap installer (installs kctl-env into `~/.kctl-env` or `$KCTL_ENV_ROOT`)
 - README “Quick install” section
+- Shell completion scripts for kctl-env (Bash and Zsh)
 
 ## [v0.1.0] - 2026-01-07
 ### Added

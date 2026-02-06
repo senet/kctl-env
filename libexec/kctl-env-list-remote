@@ -1,10 +1,42 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# List available kubectl releases from dl.k8s.io
-# Zero-deps: parse HTML index
+# List available kubectl releases.
+#
+# Kubernetes' dl.k8s.io no longer exposes a browsable release index, so we use
+# the GitHub tags API and parse it with POSIX tools (no jq).
+#
+# Notes:
+# - Unauthenticated GitHub API requests are rate-limited.
+# - Increase limits by exporting GITHUB_TOKEN.
 
-curl -fsSL https://dl.k8s.io/release/ |
-  grep -Eo 'v[0-9]+\.[0-9]+\.[0-9]+' |
+MAX_PAGES="${KCTL_LIST_REMOTE_MAX_PAGES:-5}"
+PER_PAGE=100
+
+api_base="https://api.github.com/repos/kubernetes/kubernetes/tags"
+
+curl_args=(-sSL)
+if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+  curl_args+=(-H "Authorization: Bearer ${GITHUB_TOKEN}")
+fi
+
+page=1
+while [[ "$page" -le "$MAX_PAGES" ]]; do
+  json="$(curl "${curl_args[@]}" "${api_base}?per_page=${PER_PAGE}&page=${page}")" || {
+    echo "kctl-env: failed to query GitHub tags API (page ${page})." >&2
+    echo "Hint: export GITHUB_TOKEN to avoid rate limits, or set KCTL_LIST_REMOTE_MAX_PAGES lower." >&2
+    exit 1
+  }
+
+  # Extract stable semver tags like v1.29.0
+  tags="$(printf '%s' "$json" |
+    grep -Eo '"name"[[:space:]]*:[[:space:]]*"v[0-9]+\.[0-9]+\.[0-9]+"' |
+    sed -E 's/.*"(v[0-9]+\.[0-9]+\.[0-9]+)".*/\1/'
+  )"
+
+  [[ -z "$tags" ]] && break
+  printf '%s\n' "$tags"
+  page=$((page + 1))
+done |
   sort -Vr |
   uniq

@@ -20,7 +20,11 @@ Install into `~/.kctl-env`:
 curl -fsSL https://raw.githubusercontent.com/senet/kctl-env/main/install.sh | bash
 ```
 
-If you’re testing from a feature branch, replace `main` with the branch name (e.g. `feat/easy-install`).
+If you’re testing from a feature branch, replace `main` in the URL and pass the branch name as the ref:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/senet/kctl-env/feat/easy-install/install.sh | bash -s -- feat/easy-install
+```
 
 Pin a specific version (recommended for reproducibility):
 

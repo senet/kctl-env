@@ -20,6 +20,8 @@ Install into `~/.kctl-env`:
 curl -fsSL https://raw.githubusercontent.com/senet/kctl-env/main/install.sh | bash
 ```
 
+If you’re testing from a feature branch, replace `main` with the branch name (e.g. `feat/easy-install`).
+
 Pin a specific version (recommended for reproducibility):
 
 ```sh

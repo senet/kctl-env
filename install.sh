@@ -84,7 +84,7 @@ require_cmd tar
 require_cmd awk
 require_cmd basename
 
-tmpdir="$(mktemp -d)"
+tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/kctl-env.XXXXXX")"
 trap 'rm -rf "$tmpdir"' EXIT
 
 archive="$tmpdir/src.tar.gz"

@@ -11,11 +11,14 @@ _kctl_env__root() {
 }
 
 _kctl_env__installed_versions() {
-  local root
+  local root versions
   root="$(_kctl_env__root)"
 
   if [[ -d "$root/versions" ]]; then
-    ls -1 "$root/versions" 2>/dev/null | grep -E '^(v[0-9]+\.[0-9]+\.[0-9]+|latest)$' | sort -Vr
+    # Use zsh's built-in sorting instead of GNU sort -V for portability
+    # (On) = reverse numeric sort, which handles version numbers correctly
+    versions=( ${(f)"$(ls -1 "$root/versions" 2>/dev/null | grep -E '^(v[0-9]+\.[0-9]+\.[0-9]+|latest)$')"} )
+    print -l ${(On)versions}
   fi
 }
 

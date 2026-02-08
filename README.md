@@ -14,16 +14,16 @@ Pure Bash, zero-deps kubectl version manager with fast shims and tfenv-style UX.
 
 ### Quick install (recommended)
 
-Pin a specific version (recommended for reproducibility and supply-chain security):
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/senet/kctl-env/v0.1.0/install.sh | bash -s -- v0.1.0
-```
-
-Install from the main branch (for development/testing):
+Install from the `main` branch (recommended until the next tagged release that includes `install.sh`):
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/senet/kctl-env/main/install.sh | bash -s -- main
+```
+
+Pin a specific version (recommended for reproducibility and supply-chain security after the next release):
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/senet/kctl-env/vX.Y.Z/install.sh | bash -s -- vX.Y.Z
 ```
 
 If you're testing from a feature branch, replace `main` in the URL (URL-encoding the branch name if it contains `/`) and pass the branch name as the ref:

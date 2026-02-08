@@ -45,14 +45,13 @@
    # On macOS (BSD userland), use shasum instead:
    # curl -fsSL https://github.com/senet/kctl-env/archive/refs/tags/v0.1.1.tar.gz | shasum -a 256 > v0.1.1.tar.gz.sha256
    
-   # Create GitHub release and upload checksum as asset
+   # Create the GitHub release and attach the checksum asset
+   # Note: this repo uses immutable releases, so you must attach assets at
+   # creation time (you can't upload them later).
    # Note: GitHub automatically provides the source tarball at:
    #   https://github.com/senet/kctl-env/archive/refs/tags/v0.1.1.tar.gz
    # We only need to upload the checksum file as an additional asset.
    gh release create v0.1.1 --title "v0.1.1" --notes "Release v0.1.1" v0.1.1.tar.gz.sha256
-   
-   # Or if release already exists, just upload the checksum:
-   # gh release upload v0.1.1 v0.1.1.tar.gz.sha256
    ```
    This enables secure installation with SHA256 verification.
 

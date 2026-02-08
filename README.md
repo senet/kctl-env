@@ -17,7 +17,7 @@ Pure Bash, zero-deps kubectl version manager with fast shims and tfenv-style UX.
 Pin a specific version (recommended for reproducibility and supply-chain security):
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/senet/kctl-env/main/install.sh | bash -s -- v0.1.0
+curl -fsSL https://raw.githubusercontent.com/senet/kctl-env/v0.1.0/install.sh | bash -s -- v0.1.0
 ```
 
 Install from the main branch (for development/testing):

@@ -52,3 +52,11 @@ git add VERSION "$changelog_file" "$spec_file"
 git commit -m "release: bump to v$new_version"
 
 echo "Release files updated and committed. Open a PR if on a release branch."
+echo
+echo "After merging and creating the tag, remember to:"
+echo "  1. Create a GitHub release for v$new_version"
+echo "  2. Generate and attach checksum for the source tarball:"
+echo "     curl -fsSL https://github.com/senet/kctl-env/archive/refs/tags/v$new_version.tar.gz | sha256sum > v$new_version.tar.gz.sha256"
+echo "  3. Upload the checksum file as a release asset"
+echo "     This enables secure installation with: curl -fsSL https://raw.githubusercontent.com/senet/kctl-env/main/install.sh | bash -s -- v$new_version"
+

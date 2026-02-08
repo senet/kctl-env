@@ -11,6 +11,7 @@ REPO_NAME="kctl-env"
 
 KCTL_ENV_ROOT="${KCTL_ENV_ROOT:-$HOME/.kctl-env}"
 KCTL_ENV_REF="${KCTL_ENV_REF:-}"
+KCTL_ENV_SKIP_VERIFY="${KCTL_ENV_SKIP_VERIFY:-}"
 
 usage() {
   cat <<EOF
@@ -63,6 +64,7 @@ require_cmd curl
 require_cmd find
 require_cmd head
 require_cmd tar
+require_cmd sha256sum
 
 tmpdir="$(mktemp -d)"
 trap 'rm -rf "$tmpdir"' EXIT
@@ -71,6 +73,46 @@ archive="$tmpdir/src.tar.gz"
 
 echo "Downloading $archive_url"
 curl -fsSL "$archive_url" -o "$archive"
+
+# Verify integrity for tagged releases
+# For tags (v*), try to fetch and verify SHA256 checksum from GitHub releases
+# For branches, skip checksum (GitHub doesn't provide checksums for auto-generated tarballs)
+if [[ "$ref" == v* ]]; then
+  if [[ -n "${KCTL_ENV_SKIP_VERIFY:-}" ]]; then
+    echo "Warning: Checksum verification explicitly skipped via KCTL_ENV_SKIP_VERIFY" >&2
+  else
+    checksum_url="https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${ref}/${ref}.tar.gz.sha256"
+    echo "Verifying checksum..."
+    if curl -fsSL "$checksum_url" -o "$tmpdir/checksum.sha256" 2>/dev/null; then
+      # Extract just the hash (first field) and verify manually
+      expected_hash="$(awk '{print $1}' "$tmpdir/checksum.sha256")"
+      actual_hash="$(sha256sum "$archive" | awk '{print $1}')"
+      
+      # Validate that hashes were extracted successfully
+      if [[ -z "$expected_hash" || -z "$actual_hash" ]]; then
+        echo "Error: Failed to extract checksum values" >&2
+        echo "The checksum file may be empty or malformed" >&2
+        exit 1
+      fi
+      
+      if [[ "$expected_hash" != "$actual_hash" ]]; then
+        echo "Checksum verification failed for $ref" >&2
+        echo "Expected: $expected_hash" >&2
+        echo "Actual:   $actual_hash" >&2
+        echo "This may indicate a compromised download or release." >&2
+        exit 1
+      fi
+      echo "Checksum verified successfully"
+    else
+      echo "Error: No checksum found for $ref at $checksum_url" >&2
+      echo "For security, this installer requires SHA256 verification for tagged releases." >&2
+      echo "To install an older release without checksums, use: KCTL_ENV_SKIP_VERIFY=1 $0 $ref" >&2
+      exit 1
+    fi
+  fi
+else
+  echo "Note: Checksum verification skipped for branch '$ref' (not available for auto-generated archives)"
+fi
 
 # Extract
 mkdir -p "$tmpdir/src"

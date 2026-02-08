@@ -33,6 +33,8 @@ curl -fsSL https://raw.githubusercontent.com/senet/kctl-env/feat/easy-install/in
 ```
 
 
+**Security note**: Tagged releases (v*) include SHA256 checksum verification when checksums are available as release assets. Branch installations skip verification as GitHub does not provide checksums for auto-generated archives.
+
 1. Clone or extract kctl-env to a directory (e.g., `~/.kctl-env`).
 2. Add the `bin/` directory to your `PATH`:
 

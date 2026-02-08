@@ -26,10 +26,10 @@ Install from the main branch (for development/testing):
 curl -fsSL https://raw.githubusercontent.com/senet/kctl-env/main/install.sh | bash -s -- main
 ```
 
-If you're testing from a feature branch, replace `main` in the URL and pass the branch name as the ref:
+If you're testing from a feature branch, replace `main` in the URL (URL-encoding the branch name if it contains `/`) and pass the branch name as the ref:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/senet/kctl-env/feat/easy-install/install.sh | bash -s -- feat/easy-install
+curl -fsSL https://raw.githubusercontent.com/senet/kctl-env/feat%2Feasy-install/install.sh | bash -s -- feat/easy-install
 ```
 
 

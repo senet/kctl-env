@@ -86,6 +86,14 @@ if [[ "$ref" == v* ]]; then
       # Extract just the hash (first field) and verify manually
       expected_hash="$(awk '{print $1}' "$tmpdir/checksum.sha256")"
       actual_hash="$(sha256sum "$archive" | awk '{print $1}')"
+      
+      # Validate that hashes were extracted successfully
+      if [[ -z "$expected_hash" || -z "$actual_hash" ]]; then
+        echo "Error: Failed to extract checksum values" >&2
+        echo "The checksum file may be empty or malformed" >&2
+        exit 1
+      fi
+      
       if [[ "$expected_hash" != "$actual_hash" ]]; then
         echo "Checksum verification failed for $ref" >&2
         echo "Expected: $expected_hash" >&2

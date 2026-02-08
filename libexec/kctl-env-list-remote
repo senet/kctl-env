@@ -15,7 +15,7 @@ PER_PAGE=100
 
 api_base="https://api.github.com/repos/kubernetes/kubernetes/tags"
 
-curl_args=(-sSL)
+curl_args=(-sSLf)
 if [[ -n "${GITHUB_TOKEN:-}" ]]; then
   curl_args+=(-H "Authorization: Bearer ${GITHUB_TOKEN}")
 fi

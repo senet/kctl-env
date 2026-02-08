@@ -60,6 +60,7 @@ require_cmd curl
 require_cmd find
 require_cmd head
 require_cmd tar
+require_cmd sha256sum
 
 tmpdir="$(mktemp -d)"
 trap 'rm -rf "$tmpdir"' EXIT
@@ -68,6 +69,28 @@ archive="$tmpdir/src.tar.gz"
 
 echo "Downloading $archive_url"
 curl -fsSL "$archive_url" -o "$archive"
+
+# Verify integrity for tagged releases
+# For tags (v*), try to fetch and verify SHA256 checksum from GitHub releases
+# For branches, skip checksum (GitHub doesn't provide checksums for auto-generated tarballs)
+if [[ "$ref" == v* ]]; then
+  checksum_url="https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${ref}/kctl-env-${ref}.tar.gz.sha256"
+  echo "Verifying checksum..."
+  if curl -fsSL "$checksum_url" -o "$tmpdir/src.tar.gz.sha256" 2>/dev/null; then
+    # Checksum file format: "<hash>  <filename>"
+    if ! ( cd "$tmpdir" && sha256sum -c src.tar.gz.sha256 >/dev/null 2>&1 ); then
+      echo "Checksum verification failed for $ref" >&2
+      echo "This may indicate a compromised download or release." >&2
+      exit 1
+    fi
+    echo "Checksum verified successfully"
+  else
+    echo "Warning: No checksum found for $ref at $checksum_url" >&2
+    echo "Proceeding without checksum verification. For security, consider using a version with checksums." >&2
+  fi
+else
+  echo "Note: Checksum verification skipped for branch '$ref' (not available for auto-generated archives)"
+fi
 
 # Extract
 mkdir -p "$tmpdir/src"

@@ -115,6 +115,8 @@ source "${KCTL_ENV_ROOT:-$HOME/.kctl-env}/etc/kctl-env-completion.bash"
 Zsh:
 
 ```sh
+# Ensure Zsh completion system is initialized (if not already done in your .zshrc)
+autoload -Uz compinit && compinit
 source "${KCTL_ENV_ROOT:-$HOME/.kctl-env}/etc/kctl-env-completion.zsh"
 ```
 

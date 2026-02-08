@@ -38,5 +38,20 @@ while [[ "$page" -le "$MAX_PAGES" ]]; do
   printf '%s\n' "$tags"
   page=$((page + 1))
 done |
-  sort -Vr |
-  uniq
+  if sort -V </dev/null >/dev/null 2>&1; then
+    # Prefer GNU sort's version sort when available.
+    sort -Vr | uniq
+  else
+    # POSIX fallback: sort semantic versions vMAJOR.MINOR.PATCH numerically.
+    awk -F. '
+      {
+        ver = $0
+        # Strip leading "v" from major component.
+        sub(/^v/, "", $1)
+        # Print: original major minor patch
+        printf "%s %d %d %d\n", ver, $1, $2, $3
+      }
+    ' |
+      sort -k2,2nr -k3,3nr -k4,4nr |
+      awk '!seen[$1]++ { print $1 }'
+  fi

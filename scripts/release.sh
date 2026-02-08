@@ -60,6 +60,7 @@ echo "     # On Linux / systems with GNU coreutils:"
 echo "     curl -fsSL https://github.com/senet/kctl-env/archive/refs/tags/v$new_version.tar.gz | sha256sum > v$new_version.tar.gz.sha256"
 echo "     # On macOS (no sha256sum by default):"
 echo "     curl -fsSL https://github.com/senet/kctl-env/archive/refs/tags/v$new_version.tar.gz | shasum -a 256 > v$new_version.tar.gz.sha256"
-echo "  3. Upload the checksum file as a release asset"
+echo "  3. Create the release and attach the checksum asset (immutable releases):"
+echo "     gh release create v$new_version --title \"v$new_version\" --notes \"Release v$new_version\" v$new_version.tar.gz.sha256"
 echo "     This enables secure installation with: curl -fsSL https://raw.githubusercontent.com/senet/kctl-env/v$new_version/install.sh | bash -s -- v$new_version"
 

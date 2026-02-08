@@ -19,7 +19,9 @@ _kctl_env__installed_versions() {
     setopt localoptions no_aliases no_errexit
     # List installed versions without sorting for portability (matches bash completion behavior)
     # GNU sort -V is not available on BSD/macOS, and zsh lacks semantic version sorting
-    command ls -1 "$root/versions" 2>/dev/null | command grep -E '^(v[0-9]+\.[0-9]+\.[0-9]+|latest)$' || true
+    # Include all version entries starting with "v" (e.g., pre-releases like v1.30.0-rc.0).
+    # Do not emit "latest" here; it is already offered as a keyword.
+    command ls -1 "$root/versions" 2>/dev/null | command grep -E '^v' || true
   fi
 }
 

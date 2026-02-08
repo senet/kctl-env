@@ -8,15 +8,16 @@ _kctl_env__list_installed_versions() {
 
   # Prefer fast local directory listing; no network calls.
   if [[ -d "$root/versions" ]]; then
-    command ls -1 "$root/versions" 2>/dev/null | command grep -E '^(v[0-9]+\.[0-9]+\.[0-9]+|latest)$' || true
+    # Include all version entries starting with "v" (e.g., pre-releases like v1.30.0-rc.0).
+    # Do not emit "latest" here; it is already offered as a keyword.
+    command ls -1 "$root/versions" 2>/dev/null | command grep -E '^v' || true
   fi
 }
 
 _kctl_env() {
-  local cur prev cmd
+  local cur cmd
   COMPREPLY=()
   cur="${COMP_WORDS[COMP_CWORD]}"
-  prev="${COMP_WORDS[COMP_CWORD-1]}"
   cmd="${COMP_WORDS[1]}"
 
   local commands="install use list-remote help"

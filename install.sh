@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # kctl-env bootstrap installer
-# - Requires standard Unix tools: bash, curl, tar, coreutils (incl. install, mktemp, head, basename, sha256sum), find, awk
+# - Requires standard Unix tools: bash, curl, tar, coreutils (incl. install, mktemp, head, basename), find, awk
+# - SHA256 verification uses sha256sum (Linux), shasum (macOS), or openssl (fallback)
 # - Installs into $KCTL_ENV_ROOT (default: ~/.kctl-env)
 # - Preserves existing runtime dirs (versions/, cache/)
 
@@ -58,13 +59,28 @@ require_cmd() {
   command -v "$1" >/dev/null 2>&1 || { echo "Missing required command: $1" >&2; exit 1; }
 }
 
+# Compute SHA256 hash using available tools
+# Returns hash on stdout, exits non-zero on error
+compute_sha256() {
+  local file="$1"
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$file" | awk '{print $1}'
+  elif command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$file" | awk '{print $1}'
+  elif command -v openssl >/dev/null 2>&1; then
+    openssl dgst -sha256 "$file" | awk '{print $NF}'
+  else
+    echo "Error: No SHA256 tool found (tried: sha256sum, shasum, openssl)" >&2
+    exit 1
+  fi
+}
+
 require_cmd install
 require_cmd mktemp
 require_cmd curl
 require_cmd find
 require_cmd head
 require_cmd tar
-require_cmd sha256sum
 require_cmd awk
 require_cmd basename
 
@@ -88,7 +104,7 @@ if [[ "$ref" == v* ]]; then
     if curl -fsSL "$checksum_url" -o "$tmpdir/checksum.sha256" 2>/dev/null; then
       # Extract just the hash (first field) and verify manually
       expected_hash="$(awk '{print $1}' "$tmpdir/checksum.sha256")"
-      actual_hash="$(sha256sum "$archive" | awk '{print $1}')"
+      actual_hash="$(compute_sha256 "$archive")"
       
       # Validate that hashes were extracted successfully
       if [[ -z "$expected_hash" || -z "$actual_hash" ]]; then

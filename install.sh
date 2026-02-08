@@ -74,12 +74,16 @@ curl -fsSL "$archive_url" -o "$archive"
 # For tags (v*), try to fetch and verify SHA256 checksum from GitHub releases
 # For branches, skip checksum (GitHub doesn't provide checksums for auto-generated tarballs)
 if [[ "$ref" == v* ]]; then
-  checksum_url="https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${ref}/kctl-env-${ref}.tar.gz.sha256"
+  checksum_url="https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${ref}/${ref}.tar.gz.sha256"
   echo "Verifying checksum..."
-  if curl -fsSL "$checksum_url" -o "$tmpdir/src.tar.gz.sha256" 2>/dev/null; then
-    # Checksum file format: "<hash>  <filename>"
-    if ! ( cd "$tmpdir" && sha256sum -c src.tar.gz.sha256 >/dev/null 2>&1 ); then
+  if curl -fsSL "$checksum_url" -o "$tmpdir/checksum.sha256" 2>/dev/null; then
+    # Extract just the hash (first field) and verify manually
+    expected_hash="$(awk '{print $1}' "$tmpdir/checksum.sha256")"
+    actual_hash="$(sha256sum "$archive" | awk '{print $1}')"
+    if [[ "$expected_hash" != "$actual_hash" ]]; then
       echo "Checksum verification failed for $ref" >&2
+      echo "Expected: $expected_hash" >&2
+      echo "Actual:   $actual_hash" >&2
       echo "This may indicate a compromised download or release." >&2
       exit 1
     fi

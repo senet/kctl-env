@@ -41,11 +41,10 @@
 5. Create a GitHub release for the tag and attach checksums:
    ```sh
    # Generate SHA256 checksum for the source tarball
-   curl -fsSL https://github.com/senet/kctl-env/archive/refs/tags/v0.1.1.tar.gz | \
-     sha256sum | awk '{print $1 "  kctl-env-v0.1.1.tar.gz"}' > kctl-env-v0.1.1.tar.gz.sha256
+   curl -fsSL https://github.com/senet/kctl-env/archive/refs/tags/v0.1.1.tar.gz | sha256sum > v0.1.1.tar.gz.sha256
    
    # Upload as a release asset via GitHub UI or CLI
-   gh release create v0.1.1 --title "v0.1.1" --notes "Release v0.1.1" kctl-env-v0.1.1.tar.gz.sha256
+   gh release create v0.1.1 --title "v0.1.1" --notes "Release v0.1.1" v0.1.1.tar.gz.sha256
    ```
    This enables secure installation with SHA256 verification.
 

@@ -138,8 +138,8 @@ fi
 mkdir -p "$tmpdir/src"
 tar -xzf "$archive" -C "$tmpdir/src"
 
-# Determine extracted directory
-src_root="$(find "$tmpdir/src" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+# Determine extracted directory (portable: avoid non-POSIX -mindepth/-maxdepth)
+src_root="$(find "$tmpdir/src" -type d ! -path "$tmpdir/src" | head -n 1)"
 if [[ -z "${src_root:-}" || ! -d "$src_root" ]]; then
   echo "Failed to locate extracted source directory" >&2
   exit 1

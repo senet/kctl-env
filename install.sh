@@ -124,7 +124,9 @@ if [[ "$ref" == v* ]]; then
     else
       echo "Error: No checksum found for $ref at $checksum_url" >&2
       echo "For security, this installer requires SHA256 verification for tagged releases." >&2
-      echo "To install an older release without checksums, use: KCTL_ENV_SKIP_VERIFY=1 $0 $ref" >&2
+      echo "If you still want to install this older release without checksums, you can re-run with:" >&2
+      echo "  Local file:  KCTL_ENV_SKIP_VERIFY=1 ./install.sh $ref" >&2
+      echo "  Via curl:    KCTL_ENV_SKIP_VERIFY=1 bash -s -- $ref" >&2
       exit 1
     fi
   fi

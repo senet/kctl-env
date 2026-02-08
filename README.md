@@ -104,6 +104,22 @@ curl -fsSL https://raw.githubusercontent.com/senet/kctl-env/feat%2Feasy-install/
    kctl-env list-remote | head
    ```
 
+## Shell completion
+
+Bash:
+
+```sh
+source "${KCTL_ENV_ROOT:-$HOME/.kctl-env}/etc/kctl-env-completion.bash"
+```
+
+Zsh:
+
+```sh
+# Ensure Zsh completion system is initialized (if not already done in your .zshrc)
+autoload -Uz compinit && compinit
+source "${KCTL_ENV_ROOT:-$HOME/.kctl-env}/etc/kctl-env-completion.zsh"
+```
+
 ## Implementation Notes
 
 - Pure Bash, zero dependencies beyond standard POSIX tools: curl, grep, sed, awk, sha256sum.

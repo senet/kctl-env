@@ -18,20 +18,19 @@ usage() {
 kctl-env installer
 
 Usage:
-  ./install.sh [ref]
+  ./install.sh <ref>
 
 Arguments:
-  ref            Git ref to install (tag like v0.1.1, or branch like main)
+  ref            Git ref to install (required; tag like v0.1.1, or branch like main)
 
 Environment:
-  KCTL_ENV_ROOT         Install root (default: ~/.kctl-env)
-  KCTL_ENV_REF          Same as [ref]
-  KCTL_ENV_SKIP_VERIFY  Skip checksum verification (use with caution)
+  KCTL_ENV_ROOT  Install root (default: ~/.kctl-env)
+  KCTL_ENV_REF   Alternative to passing ref as argument (required if ref not provided)
 
 Examples:
   ./install.sh v0.1.1
   KCTL_ENV_ROOT="$HOME/.kctl-env" ./install.sh main
-  KCTL_ENV_SKIP_VERIFY=1 ./install.sh v0.1.0  # For releases without checksums
+  KCTL_ENV_REF=v0.1.1 ./install.sh
 EOF
 }
 
@@ -43,8 +42,10 @@ fi
 
 ref="${ref_from_input:-$KCTL_ENV_REF}"
 if [[ -z "$ref" ]]; then
-  # Default to main for safety (predictable). Users can pin a tag.
-  ref="main"
+  echo "Error: No ref specified. For supply-chain security, you must explicitly specify a version tag or branch." >&2
+  echo "Usage: $0 <ref>  (e.g., v0.1.1 or main)" >&2
+  echo "See: curl -fsSL https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/install.sh | bash -s -- <ref>" >&2
+  exit 1
 fi
 
 archive_url=""

@@ -36,5 +36,5 @@ ln -sf /usr/lib/kctl-env/bin/kubectl %{buildroot}/usr/bin/kubectl
 /usr/bin/kubectl
 
 %changelog
-* Wed Jan 07 2026 kctl-env Maintainers <sen.net@hotmail.com> - 0.1.0-1
+* Wed Jan 07 2026 kctl-env Maintainers <kctl-env@example.com> - 0.1.0-1
 - Initial release

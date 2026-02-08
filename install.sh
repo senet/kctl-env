@@ -83,6 +83,7 @@ require_cmd head
 require_cmd tar
 require_cmd awk
 require_cmd basename
+require_cmd tr
 
 tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/kctl-env.XXXXXX")"
 trap 'rm -rf "$tmpdir"' EXIT
@@ -103,13 +104,19 @@ if [[ "$ref" == v* ]]; then
     echo "Verifying checksum..."
     if curl -fsSL "$checksum_url" -o "$tmpdir/checksum.sha256" 2>/dev/null; then
       # Extract just the hash (first field) and verify manually
-      expected_hash="$(awk '{print $1}' "$tmpdir/checksum.sha256")"
-      actual_hash="$(compute_sha256 "$archive")"
+      expected_hash="$(awk 'NR==1{print $1; exit}' "$tmpdir/checksum.sha256" | tr '[:upper:]' '[:lower:]')"
+      actual_hash="$(compute_sha256 "$archive" | tr '[:upper:]' '[:lower:]')"
       
       # Validate that hashes were extracted successfully
       if [[ -z "$expected_hash" || -z "$actual_hash" ]]; then
         echo "Error: Failed to extract checksum values" >&2
         echo "The checksum file may be empty or malformed" >&2
+        exit 1
+      fi
+
+      if [[ ! "$expected_hash" =~ ^[0-9a-f]{64}$ ]]; then
+        echo "Error: Checksum file is malformed (expected SHA256 hex)." >&2
+        echo "Got: $expected_hash" >&2
         exit 1
       fi
       

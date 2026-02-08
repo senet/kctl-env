@@ -56,7 +56,10 @@ echo
 echo "After merging and creating the tag, remember to:"
 echo "  1. Create a GitHub release for v$new_version"
 echo "  2. Generate and attach checksum for the source tarball:"
+echo "     # On Linux / systems with GNU coreutils:"
 echo "     curl -fsSL https://github.com/senet/kctl-env/archive/refs/tags/v$new_version.tar.gz | sha256sum > v$new_version.tar.gz.sha256"
+echo "     # On macOS (no sha256sum by default):"
+echo "     curl -fsSL https://github.com/senet/kctl-env/archive/refs/tags/v$new_version.tar.gz | shasum -a 256 > v$new_version.tar.gz.sha256"
 echo "  3. Upload the checksum file as a release asset"
 echo "     This enables secure installation with: curl -fsSL https://raw.githubusercontent.com/senet/kctl-env/main/install.sh | bash -s -- v$new_version"
 

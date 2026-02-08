@@ -40,8 +40,10 @@
    ```
 5. Generate and publish checksums for the release:
    ```sh
-   # Generate SHA256 checksum for the source tarball
+   # Generate SHA256 checksum for the source tarball (Linux / GNU coreutils)
    curl -fsSL https://github.com/senet/kctl-env/archive/refs/tags/v0.1.1.tar.gz | sha256sum > v0.1.1.tar.gz.sha256
+   # On macOS (BSD userland), use shasum instead:
+   # curl -fsSL https://github.com/senet/kctl-env/archive/refs/tags/v0.1.1.tar.gz | shasum -a 256 > v0.1.1.tar.gz.sha256
    
    # Create GitHub release and upload checksum as asset
    # Note: GitHub automatically provides the source tarball at:

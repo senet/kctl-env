@@ -65,6 +65,8 @@ require_cmd find
 require_cmd head
 require_cmd tar
 require_cmd sha256sum
+require_cmd awk
+require_cmd basename
 
 tmpdir="$(mktemp -d)"
 trap 'rm -rf "$tmpdir"' EXIT

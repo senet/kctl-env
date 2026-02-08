@@ -15,7 +15,9 @@ _kctl_env__installed_versions() {
   root="$(_kctl_env__root)"
 
   if [[ -d "$root/versions" ]]; then
-    ls -1 "$root/versions" 2>/dev/null | grep -E '^(v[0-9]+\.[0-9]+\.[0-9]+|latest)$' | sort -Vr
+    # List installed versions without sorting for portability (matches bash completion behavior)
+    # GNU sort -V is not available on BSD/macOS, and zsh lacks semantic version sorting
+    ls -1 "$root/versions" 2>/dev/null | grep -E '^(v[0-9]+\.[0-9]+\.[0-9]+|latest)$'
   fi
 }
 

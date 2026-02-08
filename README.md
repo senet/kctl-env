@@ -17,7 +17,7 @@ Pure Bash, zero-deps kubectl version manager with fast shims and tfenv-style UX.
 Pin a specific version for security and reproducibility:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/senet/kctl-env/main/install.sh | bash -s -- v0.1.1
+curl -fsSL https://raw.githubusercontent.com/senet/kctl-env/v0.1.1/install.sh | bash -s -- v0.1.1
 ```
 
 ### Development/unstable install
@@ -33,6 +33,8 @@ For testing from a feature branch, replace `main` in the URL and pass the branch
 ```sh
 curl -fsSL https://raw.githubusercontent.com/senet/kctl-env/feat/easy-install/install.sh | bash -s -- feat/easy-install
 ```
+
+### Manual installation
 
 1. Clone or extract kctl-env to a directory (e.g., `~/.kctl-env`).
 2. Add the `bin/` directory to your `PATH`:

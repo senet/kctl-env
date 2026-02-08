@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # kctl-env bootstrap installer
-# - Zero deps beyond: bash, curl, tar, coreutils
+# - Requires standard Unix tools: bash, curl, tar, coreutils (incl. install, mktemp, head, basename, sha256sum), find, awk
 # - Installs into $KCTL_ENV_ROOT (default: ~/.kctl-env)
 # - Preserves existing runtime dirs (versions/, cache/)
 

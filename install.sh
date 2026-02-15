@@ -177,7 +177,7 @@ ensure_path_in_rc() {
           print
           next
         }
-        if (inblock && $0 ~ /^export PATH="/) {
+        if (inblock && $0 ~ /^[[:space:]]*export[[:space:]]+PATH=/) {
           print "export PATH=\"" bp ":\$PATH\""
           next
         }

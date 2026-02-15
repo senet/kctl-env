@@ -109,8 +109,15 @@ default_rc_file() {
   fi
 
   case "${SHELL:-}" in
-    */zsh) echo "$HOME/.zshrc" ;;
-    *)     echo "$HOME/.bashrc" ;;
+    */bash)  echo "$HOME/.bashrc" ;;
+    */zsh)   echo "$HOME/.zshrc" ;;
+    */fish)  echo "$HOME/.config/fish/config.fish" ;;
+    */tcsh|*/csh) echo "$HOME/.cshrc" ;;
+    */ksh)   echo "$HOME/.kshrc" ;;
+    *)
+      echo "kctl-env installer: warning: unsupported shell '${SHELL:-unknown}'. Defaulting to $HOME/.bashrc." >&2
+      echo "$HOME/.bashrc"
+      ;;
   esac
 }
 

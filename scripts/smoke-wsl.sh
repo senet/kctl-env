@@ -49,7 +49,13 @@ if [[ -z "$SKIP_KUBECTL_INSTALL" ]]; then
     exit 1
   fi
   echo "$installed_ver" > "$proj/.kubectl-version"
-  (cd "$proj/subdir" && kubectl version --client >/dev/null)
+  version_output="$(cd "$proj/subdir" && kubectl version --client 2>/dev/null)"
+  if ! grep -q "$installed_ver" <<<"$version_output"; then
+    echo "kubectl version output did not contain expected version: $installed_ver" >&2
+    echo "kubectl version --client output was:" >&2
+    echo "$version_output" >&2
+    exit 1
+  fi
 else
   printf "==> SKIP_KUBECTL_INSTALL=1 set; skipping download-based tests\n"
 fi

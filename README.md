@@ -35,7 +35,7 @@ curl -fsSL https://raw.githubusercontent.com/senet/kctl-env/feat%2Feasy-install/
 
 **Security note**: Tagged releases (v*) require SHA256 checksum verification by default and will fail if the checksum asset is missing, unless you explicitly set `KCTL_ENV_SKIP_VERIFY=1` to skip verification. Branch installations skip verification as GitHub does not provide checksums for auto-generated archives.
 
-On WSL (Ubuntu) the installer will prompt to add `~/.kctl-env/bin` to your `PATH` by updating your shell rc (defaults to `~/.bashrc`). You can control this behavior:
+On WSL the installer will prompt to add `~/.kctl-env/bin` to your `PATH` by updating your shell rc (defaults to `~/.bashrc`). You can control this behavior:
 
 - `KCTL_ENV_AUTO_PATH=1` to enable without prompting
 - `KCTL_ENV_AUTO_PATH=0` to disable

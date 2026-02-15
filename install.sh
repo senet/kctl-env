@@ -155,12 +155,41 @@ ensure_path_in_rc() {
   mkdir -p "$(dirname "$rc_file")"
   touch "$rc_file"
 
-  # Idempotency: if we've already added our block or the exact bin path, do nothing.
-  if grep -Fq "$marker_begin" "$rc_file" 2>/dev/null || grep -Fq "$bin_path" "$rc_file" 2>/dev/null; then
+  # Idempotency and path updates:
+  # - If our marker block exists and already uses this bin_path, do nothing.
+  # - If our marker block exists but points to a different bin_path, update it in-place.
+  # - If no marker block exists but the exact bin_path is already referenced, do nothing.
+  cp "$rc_file" "$rc_file.bak.$(date +%s)" 2>/dev/null || true
+
+  if grep -Fq "$marker_begin" "$rc_file" 2>/dev/null; then
+    # Marker block exists: ensure PATH line inside the block uses the current bin_path.
+    tmp_rc="${rc_file}.kctl-env-tmp.$$"
+    awk -v mb="$marker_begin" -v me="$marker_end" -v bp="$bin_path" '
+      BEGIN { inblock = 0 }
+      {
+        if ($0 == mb) {
+          inblock = 1
+          print
+          next
+        }
+        if ($0 == me) {
+          inblock = 0
+          print
+          next
+        }
+        if (inblock && $0 ~ /^export PATH="/) {
+          print "export PATH=\"" bp ":\$PATH\""
+          next
+        }
+        print
+      }
+    ' "$rc_file" > "$tmp_rc" && mv "$tmp_rc" "$rc_file"
     return 0
   fi
 
-  cp "$rc_file" "$rc_file.bak.$(date +%s)" 2>/dev/null || true
+  if grep -Fq "$bin_path" "$rc_file" 2>/dev/null; then
+    return 0
+  fi
 
   {
     echo

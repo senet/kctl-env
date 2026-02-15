@@ -352,9 +352,17 @@ esac
 
 if [[ -z "$do_auto_path" ]]; then
   if is_wsl; then
-    if prompt_yes_no_tty "Add kctl-env to PATH by updating $rc_file?" y; then
-      do_auto_path=1
+    if [[ -r /dev/tty ]]; then
+      if prompt_yes_no_tty "Add kctl-env to PATH by updating $rc_file?" y; then
+        do_auto_path=1
+      else
+        do_auto_path=0
+      fi
     else
+      echo "Note: /dev/tty is not readable; skipping interactive PATH configuration on WSL." >&2
+      echo "      To configure PATH automatically in non-interactive environments, set KCTL_ENV_AUTO_PATH=1" >&2
+      echo "      or update your shell rc file ($rc_file) to add \"$bin_path\" to PATH manually." >&2
+      echo >&2
       do_auto_path=0
     fi
   fi

@@ -31,7 +31,7 @@ Environment:
   KCTL_ENV_REF   Alternative to passing ref as argument (required if ref not provided)
   KCTL_ENV_AUTO_PATH
                 Auto-configure PATH in your shell rc.
-                - unset: prompt (if /dev/tty is available)
+                - unset: prompt on WSL (if /dev/tty is available), otherwise disabled
                 - 1:     yes (non-interactive)
                 - 0:     no
   KCTL_ENV_RC_FILE

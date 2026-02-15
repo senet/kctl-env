@@ -43,7 +43,7 @@ if [[ -z "$SKIP_KUBECTL_INSTALL" ]]; then
   proj="$workdir/project"
   mkdir -p "$proj/subdir"
   # Use the actual installed version directory under versions/ (exclude latest symlink)
-  installed_ver="$(command ls -1 "$KCTL_ENV_ROOT/versions" | command grep -E '^v' | head -n 1 || true)"
+  installed_ver="$(ls -1 "$KCTL_ENV_ROOT/versions" | grep -E '^v' | head -n 1 || true)"
   if [[ -z "$installed_ver" ]]; then
     echo "No installed v* versions found under $KCTL_ENV_ROOT/versions" >&2
     exit 1

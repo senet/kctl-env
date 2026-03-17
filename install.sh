@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # kctl-env bootstrap installer
-# - Requires standard Unix tools: bash, curl, tar, coreutils (incl. install, mktemp, head, basename), find, awk
+# - Requires standard Unix tools: bash, curl, tar, grep, coreutils (incl. install, mktemp, head, basename), find, awk
 # - SHA256 verification uses sha256sum (Linux), shasum (macOS), or openssl (fallback)
 # - Installs into $KCTL_ENV_ROOT (default: ~/.kctl-env)
 # - Preserves existing runtime dirs (versions/, cache/)
@@ -94,6 +94,7 @@ require_cmd tar
 require_cmd awk
 require_cmd basename
 require_cmd tr
+require_cmd grep
 
 is_wsl() {
   # WSL detection: environment variables are the most reliable; /proc/version is a fallback.

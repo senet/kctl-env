@@ -60,4 +60,29 @@ else
   printf "==> SKIP_KUBECTL_INSTALL=1 set; skipping download-based tests\n"
 fi
 
+# ── PATH auto-config (rc file modification) ──────────────────────────────
+printf "==> Validate PATH auto-config writes rc file\n"
+test_rc="$workdir/test_bashrc"
+touch "$test_rc"
+
+KCTL_ENV_AUTO_PATH=1 KCTL_ENV_RC_FILE="$test_rc" "$repo_root/install.sh" "$SMOKE_REF"
+
+if ! grep -Fq '# >>> kctl-env >>>' "$test_rc"; then
+  echo "FAIL: marker block not found in $test_rc after KCTL_ENV_AUTO_PATH=1" >&2
+  exit 1
+fi
+if ! grep -Fq "$KCTL_ENV_ROOT/bin" "$test_rc"; then
+  echo "FAIL: bin path not found in $test_rc" >&2
+  exit 1
+fi
+
+# Idempotency: run again and verify no duplicate blocks
+KCTL_ENV_AUTO_PATH=1 KCTL_ENV_RC_FILE="$test_rc" "$repo_root/install.sh" "$SMOKE_REF"
+marker_count="$(grep -c '# >>> kctl-env >>>' "$test_rc")"
+if [[ "$marker_count" -ne 1 ]]; then
+  echo "FAIL: expected 1 marker block, found $marker_count (idempotency broken)" >&2
+  exit 1
+fi
+printf "==> PATH auto-config OK\n"
+
 printf "==> OK\n"

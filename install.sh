@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # kctl-env bootstrap installer
-# - Requires standard Unix tools: bash, curl, tar, coreutils (incl. install, mktemp, head, basename), find, awk
+# - Requires standard Unix tools: bash, curl, tar, grep, coreutils (incl. install, mktemp, head, basename), find, awk
 # - SHA256 verification uses sha256sum (Linux), shasum (macOS), or openssl (fallback)
 # - Installs into $KCTL_ENV_ROOT (default: ~/.kctl-env)
 # - Preserves existing runtime dirs (versions/, cache/)
@@ -13,6 +13,8 @@ REPO_NAME="kctl-env"
 KCTL_ENV_ROOT="${KCTL_ENV_ROOT:-$HOME/.kctl-env}"
 KCTL_ENV_REF="${KCTL_ENV_REF:-}"
 KCTL_ENV_SKIP_VERIFY="${KCTL_ENV_SKIP_VERIFY:-}"
+KCTL_ENV_AUTO_PATH="${KCTL_ENV_AUTO_PATH:-}"
+KCTL_ENV_RC_FILE="${KCTL_ENV_RC_FILE:-}"
 
 usage() {
   cat <<EOF
@@ -27,6 +29,14 @@ Arguments:
 Environment:
   KCTL_ENV_ROOT  Install root (default: ~/.kctl-env)
   KCTL_ENV_REF   Alternative to passing ref as argument (required if ref not provided)
+  KCTL_ENV_AUTO_PATH
+                Auto-configure PATH in your shell rc.
+                - unset: prompt on WSL (if /dev/tty is available), otherwise disabled
+                - 1:     yes (non-interactive)
+                - 0:     no
+  KCTL_ENV_RC_FILE
+                Shell rc file to edit when KCTL_ENV_AUTO_PATH enables it.
+                Default: ~/.bashrc (or ~/.zshrc if SHELL ends with zsh)
 
 Examples:
   ./install.sh v0.1.1
@@ -84,6 +94,119 @@ require_cmd tar
 require_cmd awk
 require_cmd basename
 require_cmd tr
+require_cmd grep
+
+is_wsl() {
+  # WSL detection: environment variables are the most reliable; /proc/version is a fallback.
+  [[ -n "${WSL_INTEROP:-}" || -n "${WSL_DISTRO_NAME:-}" ]] && return 0
+  [[ -r /proc/version ]] && grep -qiE 'microsoft|wsl' /proc/version && return 0
+  return 1
+}
+
+default_rc_file() {
+  if [[ -n "${KCTL_ENV_RC_FILE:-}" ]]; then
+    echo "$KCTL_ENV_RC_FILE"
+    return 0
+  fi
+
+  case "${SHELL:-}" in
+    */bash)  echo "$HOME/.bashrc" ;;
+    */zsh)   echo "$HOME/.zshrc" ;;
+    */fish)  echo "$HOME/.config/fish/config.fish" ;;
+    */tcsh|*/csh) echo "$HOME/.cshrc" ;;
+    */ksh)   echo "$HOME/.kshrc" ;;
+    *)
+      echo "kctl-env installer: warning: unsupported shell '${SHELL:-unknown}'. Defaulting to $HOME/.bashrc." >&2
+      echo "$HOME/.bashrc"
+      ;;
+  esac
+}
+
+prompt_yes_no_tty() {
+  # Usage: prompt_yes_no_tty "Question" "default"  (default: y|n)
+  # Reads from /dev/tty to work even when installer is piped via curl.
+  local question="$1"
+  local def="${2:-y}"
+  local prompt ans
+
+  if [[ ! -r /dev/tty ]]; then
+    return 1
+  fi
+
+  if [[ "$def" == "y" ]]; then
+    prompt="[Y/n]"
+  else
+    prompt="[y/N]"
+  fi
+
+  printf "%s %s " "$question" "$prompt" > /dev/tty
+  IFS= read -r ans < /dev/tty || true
+  ans="${ans:-}"
+  if [[ -z "$ans" ]]; then
+    [[ "$def" == "y" ]]
+    return
+  fi
+  case "$ans" in
+    y|Y|yes|YES) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+ensure_path_in_rc() {
+  local rc_file="$1"
+  local bin_path="$2"
+  local marker_begin="# >>> kctl-env >>>"
+  local marker_end="# <<< kctl-env <<<"
+  local stamp
+  stamp="$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || true)"
+
+  mkdir -p "$(dirname "$rc_file")"
+  touch "$rc_file"
+
+  # Idempotency and path updates:
+  # - If our marker block exists and already uses this bin_path, do nothing.
+  # - If our marker block exists but points to a different bin_path, update it in-place.
+  # - If no marker block exists but the exact bin_path is already referenced, do nothing.
+  cp "$rc_file" "$rc_file.bak.$(date +%s)" 2>/dev/null || true
+
+  if grep -Fq "$marker_begin" "$rc_file" 2>/dev/null; then
+    # Marker block exists: ensure PATH line inside the block uses the current bin_path.
+    tmp_rc="${rc_file}.kctl-env-tmp.$$"
+    awk -v mb="$marker_begin" -v me="$marker_end" -v bp="$bin_path" '
+      BEGIN { inblock = 0 }
+      {
+        if ($0 == mb) {
+          inblock = 1
+          print
+          next
+        }
+        if ($0 == me) {
+          inblock = 0
+          print
+          next
+        }
+        if (inblock && $0 ~ /^[[:space:]]*export[[:space:]]+PATH=/) {
+          print "export PATH=\"" bp ":\$PATH\""
+          next
+        }
+        print
+      }
+    ' "$rc_file" > "$tmp_rc" && mv "$tmp_rc" "$rc_file"
+    return 0
+  fi
+
+  if grep -Fq "$bin_path" "$rc_file" 2>/dev/null; then
+    return 0
+  fi
+
+  {
+    echo
+    echo "$marker_begin"
+    echo "# Added by kctl-env installer${stamp:+ on $stamp}"
+    echo "export PATH=\"$bin_path:\$PATH\""
+    echo "$marker_end"
+  } >> "$rc_file"
+}
 
 tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/kctl-env.XXXXXX")"
 trap 'rm -rf "$tmpdir"' EXIT
@@ -209,3 +332,45 @@ echo "     kctl-env install latest"
 echo "  3) Select version:"
 echo "     kctl-env use latest"
 echo
+
+if [[ "$KCTL_ENV_ROOT" == /mnt/* ]]; then
+  echo "Warning: You are installing under /mnt/... (Windows filesystem)." >&2
+  echo "WSL may not preserve executable bits and symlinks there unless mounted with metadata." >&2
+  echo "Consider using the default Linux home directory path instead (e.g., ~/.kctl-env)." >&2
+  echo >&2
+fi
+
+# Optional PATH auto-config (WSL-friendly). Works even when piped via curl by reading from /dev/tty.
+bin_path="$KCTL_ENV_ROOT/bin"
+rc_file="$(default_rc_file)"
+
+do_auto_path=""
+case "${KCTL_ENV_AUTO_PATH:-}" in
+  1|yes|YES|true|TRUE) do_auto_path=1 ;;
+  0|no|NO|false|FALSE) do_auto_path=0 ;;
+  *) do_auto_path="" ;;
+esac
+
+if [[ -z "$do_auto_path" ]]; then
+  if is_wsl; then
+    if [[ -r /dev/tty ]]; then
+      if prompt_yes_no_tty "Add kctl-env to PATH by updating $rc_file?" y; then
+        do_auto_path=1
+      else
+        do_auto_path=0
+      fi
+    else
+      echo "Note: /dev/tty is not readable; skipping interactive PATH configuration on WSL." >&2
+      echo "      To configure PATH automatically in non-interactive environments, set KCTL_ENV_AUTO_PATH=1" >&2
+      echo "      or update your shell rc file ($rc_file) to add \"$bin_path\" to PATH manually." >&2
+      echo >&2
+      do_auto_path=0
+    fi
+  fi
+fi
+
+if [[ "${do_auto_path:-0}" -eq 1 ]]; then
+  ensure_path_in_rc "$rc_file" "$bin_path"
+  echo "Updated PATH in: $rc_file"
+  echo "Open a new terminal, or run: export PATH=\"$bin_path:\$PATH\""
+fi

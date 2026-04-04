@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# kctl-env list — show locally installed kubectl versions
+# Marks the active version with * and shows the source.
+
+KCTL_ENV_ROOT="${KCTL_ENV_ROOT:-$HOME/.kctl-env}"
+KCTL_VERSIONS="$KCTL_ENV_ROOT/versions"
+KCTL_GLOBAL_VERSION_FILE="$KCTL_ENV_ROOT/version"
+
+# --- Resolve active version and its source ---
+
+resolve_active_version() {
+  # 1. KCTL_VERSION env var
+  if [[ -n "${KCTL_VERSION:-}" ]]; then
+    echo "$KCTL_VERSION"
+    echo "KCTL_VERSION environment variable"
+    return 0
+  fi
+
+  # 2. .kubectl-version file (traverse up from cwd)
+  local dir="$PWD"
+  while [[ "$dir" != "/" ]]; do
+    if [[ -f "$dir/.kubectl-version" ]]; then
+      cat "$dir/.kubectl-version"
+      echo "$dir/.kubectl-version"
+      return 0
+    fi
+    dir="$(dirname "$dir")"
+  done
+
+  # 3. Global version file
+  if [[ -f "$KCTL_GLOBAL_VERSION_FILE" ]]; then
+    local gv
+    gv="$(cat "$KCTL_GLOBAL_VERSION_FILE")"
+    echo "$gv"
+    echo "$KCTL_GLOBAL_VERSION_FILE"
+    return 0
+  fi
+
+  return 1
+}
+
+# --- Resolve keywords (latest/stable) to actual v* directory ---
+
+resolve_keyword() {
+  local keyword="$1"
+  case "$keyword" in
+    latest)
+      # latest is typically a symlink; resolve its target name
+      if [[ -L "$KCTL_VERSIONS/latest" ]]; then
+        local target
+        target="$(readlink "$KCTL_VERSIONS/latest")"
+        basename "$target"
+        return 0
+      fi
+      ;;
+    stable)
+      # stable treated same as latest
+      if [[ -L "$KCTL_VERSIONS/latest" ]]; then
+        local target
+        target="$(readlink "$KCTL_VERSIONS/latest")"
+        basename "$target"
+        return 0
+      fi
+      ;;
+  esac
+  return 1
+}
+
+# --- Main ---
+
+if [[ ! -d "$KCTL_VERSIONS" ]]; then
+  echo "No versions installed. Run: kctl-env install <version>" >&2
+  exit 0
+fi
+
+# Collect installed v* versions (sorted descending)
+versions=()
+while IFS= read -r v; do
+  versions+=("$v")
+done < <(ls -1 "$KCTL_VERSIONS" 2>/dev/null | grep -E '^v' | sort -Vr)
+
+if [[ ${#versions[@]} -eq 0 ]]; then
+  echo "No versions installed. Run: kctl-env install <version>" >&2
+  exit 0
+fi
+
+# Determine active version
+active_version=""
+active_source=""
+if result="$(resolve_active_version)"; then
+  active_version="$(echo "$result" | head -n1)"
+  active_source="$(echo "$result" | tail -n1)"
+
+  # If the active version is a keyword, resolve it
+  case "$active_version" in
+    auto|latest|stable)
+      resolved="$(resolve_keyword "$active_version" 2>/dev/null || true)"
+      if [[ -n "$resolved" ]]; then
+        active_source="$active_source → $active_version"
+        active_version="$resolved"
+      fi
+      ;;
+  esac
+fi
+
+# Print each version with marker
+for v in "${versions[@]}"; do
+  if [[ "$v" == "$active_version" ]]; then
+    printf "* %s (set by %s)\n" "$v" "$active_source"
+  else
+    printf "  %s\n" "$v"
+  fi
+done

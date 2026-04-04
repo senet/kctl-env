@@ -14,6 +14,7 @@ kctl-env: kubectl version manager
 Usage:
   kctl-env install <version|latest|stable>
   kctl-env use <version|latest|auto>
+  kctl-env list
   kctl-env list-remote
   kctl-env help
 
@@ -31,6 +32,10 @@ cmd_use() {
   "$LIBEXEC/kctl-env-use" "$@"
 }
 
+cmd_list() {
+  "$LIBEXEC/kctl-env-list" "$@"
+}
+
 cmd_list_remote() {
   "$LIBEXEC/kctl-env-list-remote" "$@"
 }
@@ -40,6 +45,7 @@ main() {
   case "$cmd" in
     install) cmd_install "$@" ;;
     use) cmd_use "$@" ;;
+    list) cmd_list "$@" ;;
     list-remote|list_remote) cmd_list_remote "$@" ;;
     help|--help|-h|"") usage ;;
     *) echo "kctl-env: unknown command '$cmd'" >&2; usage; exit 1 ;;

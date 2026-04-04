@@ -20,7 +20,7 @@ _kctl_env() {
   cur="${COMP_WORDS[COMP_CWORD]}"
   cmd="${COMP_WORDS[1]}"
 
-  local commands="install use list-remote help"
+  local commands="install use list list-remote help"
 
   # Completing subcommand
   if [[ $COMP_CWORD -eq 1 ]]; then

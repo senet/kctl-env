@@ -30,6 +30,7 @@ _kctl_env() {
   commands=(
     'install:Install a kubectl version'
     'use:Set global kubectl version'
+    'list:List installed kubectl versions'
     'list-remote:List remote kubectl versions'
     'help:Show help'
   )

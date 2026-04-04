@@ -1,5 +1,9 @@
 # kctl-env: Kubectl Version Manager
 
+[![Release](https://img.shields.io/github/v/release/senet/kctl-env)](https://github.com/senet/kctl-env/releases)
+[![License](https://img.shields.io/github/license/senet/kctl-env)](LICENSE)
+![Shell](https://img.shields.io/badge/shell-bash-blue)
+
 Pure Bash, zero-deps kubectl version manager with fast shims and tfenv-style UX.
 
 ## Directory Structure
@@ -86,14 +90,14 @@ On WSL the installer will prompt to add `~/.kctl-env/bin` to your `PATH` by upda
 - Pin a specific version globally:
 
    ```sh
-   kctl-env install v1.27.0
-   kctl-env use v1.27.0
+   kctl-env install v1.33.0
+   kctl-env use v1.33.0
    ```
 
 - Per-project version via `.kubectl-version`:
 
    ```sh
-   echo v1.27.0 > .kubectl-version
+   echo v1.33.0 > .kubectl-version
    kubectl version --client
    ```
 
@@ -109,6 +113,19 @@ On WSL the installer will prompt to add `~/.kctl-env/bin` to your `PATH` by upda
 
    ```sh
    kctl-env list-remote | head
+   ```
+
+- List locally installed versions:
+
+   ```sh
+   kctl-env list
+   ```
+
+   Output shows the active version marked with `*`:
+
+   ```
+   * v1.33.0 (set by /home/user/.kctl-env/version)
+     v1.32.0
    ```
 
 ## Shell completion
@@ -143,8 +160,3 @@ Progress tracked via GitHub Issues/Projects.
 ## Changelog
 
 All notable changes are recorded in `CHANGELOG.md`. For any PR that changes behavior or introduces features, please update `CHANGELOG.md` accordingly.
-
-## Roadmap
-
-- Improve remote version discovery and filtering for pre-releases.
-- Add uninstall and prune commands.

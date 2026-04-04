@@ -4,9 +4,13 @@ All notable changes to this project will be documented in this file. This projec
 
 ## [Unreleased]
 ### Added
-- `install.sh` bootstrap installer (installs kctl-env into `~/.kctl-env` or `$KCTL_ENV_ROOT`)
-- README “Quick install” section
+- `kctl-env list` command — show locally installed versions with active version marker
+- WSL-friendly PATH auto-setup in `install.sh` (prompt + idempotent rc update)
+- WSL smoke test (`scripts/smoke-wsl.sh`)
+- `grep` added to installer dependency checks
 - Shell completion scripts for kctl-env (Bash and Zsh)
+- `install.sh` bootstrap installer (installs kctl-env into `~/.kctl-env` or `$KCTL_ENV_ROOT`)
+- README "Quick install" section
 
 ## [v0.1.0] - 2026-01-07
 ### Added

@@ -117,9 +117,10 @@ fi
 # Collect installed v* versions (sorted descending, portable)
 versions=()
 while IFS= read -r v; do
-  versions+=("$v")
+  [[ -n "$v" ]] && versions+=("$v")
 done < <(
-  raw_versions="$(ls -1 "$KCTL_VERSIONS" 2>/dev/null | grep -E '^v')"
+  raw_versions="$(ls -1 "$KCTL_VERSIONS" 2>/dev/null | grep -E '^v' || true)"
+  [[ -z "$raw_versions" ]] && exit 0
   if sort -V </dev/null >/dev/null 2>&1; then
     # GNU sort available (Linux / newer macOS with coreutils)
     printf '%s\n' "$raw_versions" | sort -Vr

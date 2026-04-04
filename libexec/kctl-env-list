@@ -7,6 +7,8 @@ set -euo pipefail
 KCTL_ENV_ROOT="${KCTL_ENV_ROOT:-$HOME/.kctl-env}"
 KCTL_VERSIONS="$KCTL_ENV_ROOT/versions"
 KCTL_GLOBAL_VERSION_FILE="$KCTL_ENV_ROOT/version"
+KCTL_CLUSTER_MAP="$KCTL_ENV_ROOT/cache/cluster-map"
+KCTL_CLUSTER_TTL="${KCTL_CLUSTER_TTL:-300}"
 
 # --- Resolve active version and its source ---
 
@@ -39,6 +41,43 @@ resolve_active_version() {
   fi
 
   return 1
+}
+
+# --- Resolve auto mode via cluster-map cache (mirrors bin/kubectl logic) ---
+
+get_current_context() {
+  local config="$HOME/.kube/config"
+  [[ -f "$config" ]] || return 1
+  local ctx
+  ctx="$(grep 'current-context:' "$config" | awk '{print $2}')"
+  [[ -n "$ctx" ]] && echo "$ctx" && return 0
+  return 1
+}
+
+get_cached_version_for_context() {
+  local context="$1" now ts
+  now=$(date +%s)
+  [[ -f "$KCTL_CLUSTER_MAP" ]] || return 1
+  while read -r c v t; do
+    [[ "$c" != "$context" ]] && continue
+    ts=${t:-0}
+    if [[ $((now - ts)) -lt $KCTL_CLUSTER_TTL ]]; then
+      echo "$v"
+      return 0
+    fi
+  done < "$KCTL_CLUSTER_MAP"
+  return 1
+}
+
+# Outputs two lines on success (line 1: resolved version, line 2: kube context name)
+# and returns 0, or returns 1 when context or cached version cannot be determined.
+resolve_auto() {
+  local context cached_version
+  context="$(get_current_context)" || return 1
+  cached_version="$(get_cached_version_for_context "$context")" || return 1
+  echo "$cached_version"
+  echo "$context"
+  return 0
 }
 
 # --- Resolve keywords (latest/stable) to actual v* directory ---
@@ -136,13 +175,32 @@ fi
 # Determine active version
 active_version=""
 active_source=""
+auto_note=""
 if result="$(resolve_active_version)"; then
   active_version="$(echo "$result" | head -n1)"
   active_source="$(echo "$result" | tail -n1)"
 
   # If the active version is a keyword, resolve it
   case "$active_version" in
-    auto|latest|stable)
+    auto)
+      if auto_result="$(resolve_auto 2>/dev/null)"; then
+        auto_ver="$(echo "$auto_result" | head -n1)"
+        auto_ctx="$(echo "$auto_result" | tail -n1)"
+        active_source="$active_source → auto (context: $auto_ctx)"
+        active_version="$auto_ver"
+      else
+        # Cannot resolve to a specific version; annotate and suppress the * marker
+        auto_ctx="$(get_current_context 2>/dev/null || true)"
+        populate_hint="run kubectl to populate cache"
+        if [[ -n "$auto_ctx" ]]; then
+          auto_note="  active: auto (context: $auto_ctx, no cached version — $populate_hint)"
+        else
+          auto_note="  active: auto (no kube context found — $populate_hint)"
+        fi
+        active_version=""
+      fi
+      ;;
+    latest|stable)
       resolved="$(resolve_keyword "$active_version" 2>/dev/null || true)"
       if [[ -n "$resolved" ]]; then
         active_source="$active_source → $active_version"
@@ -154,9 +212,11 @@ fi
 
 # Print each version with marker
 for v in "${versions[@]}"; do
-  if [[ "$v" == "$active_version" ]]; then
+  if [[ "$v" == "$active_version" && -n "$active_version" ]]; then
     printf "* %s (set by %s)\n" "$v" "$active_source"
   else
     printf "  %s\n" "$v"
   fi
 done
+
+[[ -n "$auto_note" ]] && echo "$auto_note"

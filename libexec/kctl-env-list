@@ -75,11 +75,29 @@ if [[ ! -d "$KCTL_VERSIONS" ]]; then
   exit 0
 fi
 
-# Collect installed v* versions (sorted descending)
+# Collect installed v* versions (sorted descending, portable)
 versions=()
 while IFS= read -r v; do
   versions+=("$v")
-done < <(ls -1 "$KCTL_VERSIONS" 2>/dev/null | grep -E '^v' | sort -Vr)
+done < <(
+  raw_versions="$(ls -1 "$KCTL_VERSIONS" 2>/dev/null | grep -E '^v')"
+  if sort -V </dev/null >/dev/null 2>&1; then
+    # GNU sort available (Linux / newer macOS with coreutils)
+    printf '%s\n' "$raw_versions" | sort -Vr
+  else
+    # POSIX fallback: sort semantic versions vMAJOR.MINOR.PATCH numerically
+    printf '%s\n' "$raw_versions" |
+      awk -F. '
+        {
+          ver = $0
+          sub(/^v/, "", $1)
+          printf "%s %d %d %d\n", ver, $1, $2, $3
+        }
+      ' |
+      sort -k2,2nr -k3,3nr -k4,4nr |
+      awk '{ print $1 }'
+  fi
+)
 
 if [[ ${#versions[@]} -eq 0 ]]; then
   echo "No versions installed. Run: kctl-env install <version>" >&2

@@ -85,17 +85,46 @@ done < <(
     # GNU sort available (Linux / newer macOS with coreutils)
     printf '%s\n' "$raw_versions" | sort -Vr
   else
-    # POSIX fallback: sort semantic versions vMAJOR.MINOR.PATCH numerically
+    # POSIX fallback: sort semantic versions, including pre-releases.
+    # Stable releases sort above pre-releases for the same MAJOR.MINOR.PATCH,
+    # and rc.N pre-releases sort numerically among themselves.
     printf '%s\n' "$raw_versions" |
-      awk -F. '
+      awk '
         {
           ver = $0
-          sub(/^v/, "", $1)
-          printf "%s %d %d %d\n", ver, $1, $2, $3
+          norm = ver
+          sub(/^v/, "", norm)
+
+          prerelease = ""
+          split(norm, parts, "-")
+          core = parts[1]
+          if (length(norm) > length(core)) {
+            prerelease = substr(norm, length(core) + 2)
+          }
+
+          split(core, nums, ".")
+          major = nums[1] + 0
+          minor = nums[2] + 0
+          patch = nums[3] + 0
+
+          stable_rank = 1
+          prerelease_rank = -1
+          prerelease_label = ""
+
+          if (prerelease != "") {
+            stable_rank = 0
+            prerelease_label = prerelease
+            if (prerelease ~ /^rc\.[0-9]+$/) {
+              split(prerelease, rc_parts, ".")
+              prerelease_rank = rc_parts[2] + 0
+            }
+          }
+
+          printf "%s\t%d\t%d\t%d\t%d\t%d\t%s\n", ver, major, minor, patch, stable_rank, prerelease_rank, prerelease_label
         }
       ' |
-      sort -k2,2nr -k3,3nr -k4,4nr |
-      awk '{ print $1 }'
+      sort -t "$(printf '\t')" -k2,2nr -k3,3nr -k4,4nr -k5,5nr -k6,6nr -k7,7r |
+      awk -F "$(printf '\t')" '{ print $1 }'
   fi
 )
 

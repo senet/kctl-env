@@ -19,15 +19,17 @@ resolve_active_version() {
     return 0
   fi
 
-  # 2. .kubectl-version file (traverse up from cwd) — uses shared find_kubectl_version_file
+  # 2. .kubectl-version file (traverse up from cwd) — reuse shared validation
   local dir="$PWD"
   while [[ "$dir" != "/" ]]; do
     if [[ -f "$dir/.kubectl-version" ]]; then
       local ver
       read -r ver < "$dir/.kubectl-version"
-      echo "$ver"
-      echo "$dir/.kubectl-version"
-      return 0
+      if is_valid_version "$ver"; then
+        echo "$ver"
+        echo "$dir/.kubectl-version"
+        return 0
+      fi
     fi
     dir="$(dirname "$dir")"
   done

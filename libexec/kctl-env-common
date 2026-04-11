@@ -20,7 +20,7 @@ kctl_debug() { [[ -n "${KCTL_ENV_DEBUG:-}" ]] && echo "kctl-env: [debug] $*" >&2
 # --- Validation ---
 # Returns 0 if the string is a valid version token (keyword or vX.Y.Z variant).
 is_valid_version() {
-  [[ "$1" =~ ^(auto|latest|stable|v[0-9]+\.[0-9]+\.[0-9]+.*)$ ]]
+  [[ "$1" =~ ^(auto|latest|stable|v[0-9]+\.[0-9]+\.[0-9]+([-+][A-Za-z0-9.]+)*)$ ]]
 }
 
 # --- Traverse up for .kubectl-version ---
@@ -63,7 +63,7 @@ get_current_context() {
 get_cached_version_for_context() {
   local context="$1"
   local now
-  printf -v now '%(%s)T' -1
+  now=$(date +%s)
   [[ -f "$KCTL_CLUSTER_MAP" ]] || return 1
   while read -r c v t; do
     [[ "$c" != "$context" ]] && continue
@@ -83,7 +83,7 @@ get_cached_version_for_context() {
 update_cluster_map_cache() {
   local context="$1" version="$2"
   local now
-  printf -v now '%(%s)T' -1
+  now=$(date +%s)
   mkdir -p "$(dirname "$KCTL_CLUSTER_MAP")"
   local prune_threshold=$(( KCTL_CLUSTER_TTL * 10 ))
   # Use awk with string comparison (not regex) to avoid injection, and prune stale entries
@@ -108,7 +108,7 @@ find_resolver_kubectl() {
   fi
   if [[ -d "$KCTL_VERSIONS" ]]; then
     local candidate
-    candidate=$(ls -1 "$KCTL_VERSIONS" 2>/dev/null | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+' | sort -Vr | while read -r d; do
+    candidate=$(ls -1 "$KCTL_VERSIONS" 2>/dev/null | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+' | sort_versions_desc | while read -r d; do
       if [[ -x "$KCTL_VERSIONS/$d/kubectl" ]]; then echo "$KCTL_VERSIONS/$d/kubectl"; break; fi
     done)
     if [[ -n "${candidate:-}" ]]; then

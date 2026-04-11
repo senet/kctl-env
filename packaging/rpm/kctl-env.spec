@@ -1,5 +1,5 @@
 Name:           kctl-env
-Version:        0.1.0
+Version:        0.2.0
 Release:        1%{?dist}
 Summary:        Pure Bash kubectl version manager with fast shims and tfenv-style UX
 License:        MIT

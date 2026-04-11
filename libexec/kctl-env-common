@@ -1,0 +1,174 @@
+#!/usr/bin/env bash
+# kctl-env-common — shared functions for kctl-env scripts
+# Sourced by bin/kubectl, libexec/kctl-env-list, etc.
+# Not executed directly.
+
+# --- Environment ---
+KCTL_ENV_ROOT="${KCTL_ENV_ROOT:-$HOME/.kctl-env}"
+KCTL_VERSIONS="${KCTL_VERSIONS:-$KCTL_ENV_ROOT/versions}"
+KCTL_CACHE="${KCTL_CACHE:-$KCTL_ENV_ROOT/cache}"
+KCTL_GLOBAL_VERSION_FILE="${KCTL_GLOBAL_VERSION_FILE:-$KCTL_ENV_ROOT/version}"
+KCTL_CLUSTER_MAP="${KCTL_CLUSTER_MAP:-$KCTL_CACHE/cluster-map}"
+KCTL_CLUSTER_TTL="${KCTL_CLUSTER_TTL:-300}"
+
+# --- Logging ---
+kctl_info()  { echo "kctl-env: $*"; }
+kctl_warn()  { echo "kctl-env: warning: $*" >&2; }
+kctl_error() { echo "kctl-env: $*" >&2; }
+kctl_debug() { [[ -n "${KCTL_ENV_DEBUG:-}" ]] && echo "kctl-env: [debug] $*" >&2 || true; }
+
+# --- Validation ---
+# Returns 0 if the string is a valid version token (keyword or vX.Y.Z variant).
+is_valid_version() {
+  [[ "$1" =~ ^(auto|latest|stable|v[0-9]+\.[0-9]+\.[0-9]+.*)$ ]]
+}
+
+# --- Traverse up for .kubectl-version ---
+find_kubectl_version_file() {
+  local dir="$PWD"
+  while [[ "$dir" != "/" ]]; do
+    if [[ -f "$dir/.kubectl-version" ]]; then
+      local ver
+      read -r ver < "$dir/.kubectl-version"
+      if is_valid_version "$ver"; then
+        kctl_debug "found .kubectl-version in $dir: $ver"
+        echo "$ver"
+        return 0
+      else
+        kctl_warn "ignoring invalid version '$ver' in $dir/.kubectl-version"
+        return 1
+      fi
+    fi
+    dir="$(dirname "$dir")"
+  done
+  return 1
+}
+
+# --- Get current kube context ---
+get_current_context() {
+  local config="$HOME/.kube/config"
+  [[ -f "$config" ]] || { kctl_debug "no kubeconfig at $config"; return 1; }
+  local ctx
+  ctx="$(grep 'current-context:' "$config" | awk '{print $2}')"
+  if [[ -n "$ctx" ]]; then
+    kctl_debug "current context: $ctx"
+    echo "$ctx"
+    return 0
+  fi
+  kctl_debug "no current-context in kubeconfig"
+  return 1
+}
+
+# --- Get cached version for context (TTL-aware) ---
+get_cached_version_for_context() {
+  local context="$1"
+  local now
+  printf -v now '%(%s)T' -1
+  [[ -f "$KCTL_CLUSTER_MAP" ]] || return 1
+  while read -r c v t; do
+    [[ "$c" != "$context" ]] && continue
+    local ts=${t:-0}
+    if [[ $((now - ts)) -lt $KCTL_CLUSTER_TTL ]]; then
+      kctl_debug "cache hit for context '$context': $v (age=$((now - ts))s)"
+      echo "$v"
+      return 0
+    else
+      kctl_debug "cache expired for context '$context' (age=$((now - ts))s, ttl=$KCTL_CLUSTER_TTL)"
+    fi
+  done < "$KCTL_CLUSTER_MAP"
+  return 1
+}
+
+# --- Update cache: context -> version (safe: awk string match, prune stale) ---
+update_cluster_map_cache() {
+  local context="$1" version="$2"
+  local now
+  printf -v now '%(%s)T' -1
+  mkdir -p "$(dirname "$KCTL_CLUSTER_MAP")"
+  local prune_threshold=$(( KCTL_CLUSTER_TTL * 10 ))
+  # Use awk with string comparison (not regex) to avoid injection, and prune stale entries
+  awk -v ctx="$context" -v now="$now" -v threshold="$prune_threshold" '
+    {
+      if ($1 == ctx) next
+      ts = $3 + 0
+      if ((now - ts) > threshold) next
+      print
+    }
+  ' "$KCTL_CLUSTER_MAP" 2>/dev/null > "$KCTL_CLUSTER_MAP.tmp" || true
+  echo "$context $version $now" >> "$KCTL_CLUSTER_MAP.tmp"
+  mv "$KCTL_CLUSTER_MAP.tmp" "$KCTL_CLUSTER_MAP"
+  kctl_debug "cache updated: $context → $version"
+}
+
+# --- Find any installed kubectl binary for server queries ---
+find_resolver_kubectl() {
+  if [[ -x "$KCTL_VERSIONS/latest/kubectl" ]]; then
+    echo "$KCTL_VERSIONS/latest/kubectl"
+    return 0
+  fi
+  if [[ -d "$KCTL_VERSIONS" ]]; then
+    local candidate
+    candidate=$(ls -1 "$KCTL_VERSIONS" 2>/dev/null | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+' | sort -Vr | while read -r d; do
+      if [[ -x "$KCTL_VERSIONS/$d/kubectl" ]]; then echo "$KCTL_VERSIONS/$d/kubectl"; break; fi
+    done)
+    if [[ -n "${candidate:-}" ]]; then
+      echo "$candidate"
+      return 0
+    fi
+  fi
+  return 1
+}
+
+# --- Query server version ---
+query_server_version() {
+  local resolver
+  resolver="$(find_resolver_kubectl)" || return 1
+  kctl_debug "querying server version via $resolver"
+  "$resolver" version --client=false --short 2>/dev/null | grep 'Server Version:' | awk '{print $3}'
+}
+
+# --- Portable version sort (descending) ---
+# Reads version strings from stdin, outputs sorted descending.
+sort_versions_desc() {
+  if sort -V </dev/null >/dev/null 2>&1; then
+    sort -Vr
+  else
+    # POSIX fallback: sort semantic versions including pre-releases.
+    awk '
+      {
+        ver = $0
+        norm = ver
+        sub(/^v/, "", norm)
+
+        prerelease = ""
+        split(norm, parts, "-")
+        core = parts[1]
+        if (length(norm) > length(core)) {
+          prerelease = substr(norm, length(core) + 2)
+        }
+
+        split(core, nums, ".")
+        major = nums[1] + 0
+        minor = nums[2] + 0
+        patch = nums[3] + 0
+
+        stable_rank = 1
+        prerelease_rank = -1
+        prerelease_label = ""
+
+        if (prerelease != "") {
+          stable_rank = 0
+          prerelease_label = prerelease
+          if (prerelease ~ /^rc\.[0-9]+$/) {
+            split(prerelease, rc_parts, ".")
+            prerelease_rank = rc_parts[2] + 0
+          }
+        }
+
+        printf "%s\t%d\t%d\t%d\t%d\t%d\t%s\n", ver, major, minor, patch, stable_rank, prerelease_rank, prerelease_label
+      }
+    ' |
+      sort -t "$(printf '\t')" -k2,2nr -k3,3nr -k4,4nr -k5,5nr -k6,6nr -k7,7r |
+      awk -F "$(printf '\t')" '{ print $1 }'
+  fi
+}

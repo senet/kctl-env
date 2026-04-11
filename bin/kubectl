@@ -4,97 +4,20 @@
 
 set -euo pipefail
 
-# --- Config ---
+# --- Bootstrap ---
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 default_root="$(cd -- "$script_dir/.." && pwd)"
-
 KCTL_ENV_ROOT="${KCTL_ENV_ROOT:-$default_root}"
-KCTL_CACHE="$KCTL_ENV_ROOT/cache"
-KCTL_VERSIONS="$KCTL_ENV_ROOT/versions"
-KCTL_GLOBAL_VERSION_FILE="$KCTL_ENV_ROOT/version"
-KCTL_CLUSTER_MAP="$KCTL_CACHE/cluster-map"
-# TTL in seconds for context -> version cache (default 300s)
-KCTL_CLUSTER_TTL="${KCTL_CLUSTER_TTL:-300}"
 
-# --- Helper: Traverse up for .kubectl-version ---
-find_kubectl_version_file() {
-  local dir="$PWD"
-  while [[ "$dir" != "/" ]]; do
-    if [[ -f "$dir/.kubectl-version" ]]; then
-      cat "$dir/.kubectl-version"
-      return 0
-    fi
-    dir="$(dirname "$dir")"
-  done
-  return 1
-}
-
-# --- Helper: Get current kube context ---
-get_current_context() {
-  grep 'current-context:' "$HOME/.kube/config" | awk '{print $2}'
-}
-
-# --- Helper: Get cached version for context ---
-get_cached_version_for_context() {
-  local context="$1"
-  local now ts
-  now=$(date +%s)
-  # Expected format: <context> <version> <timestamp>
-  if [[ -f "$KCTL_CLUSTER_MAP" ]]; then
-    while read -r c v t; do
-      [[ "$c" != "$context" ]] && continue
-      ts=${t:-0}
-      if [[ $((now - ts)) -lt $KCTL_CLUSTER_TTL ]]; then
-        echo "$v"
-        return 0
-      fi
-    done < "$KCTL_CLUSTER_MAP"
-  fi
-  return 1
-}
-
-# --- Helper: Update cache with context -> version ---
-update_cluster_map_cache() {
-  local context="$1" version="$2" now
-  now=$(date +%s)
-  mkdir -p "$(dirname "$KCTL_CLUSTER_MAP")"
-  grep -vE "^$context " "$KCTL_CLUSTER_MAP" 2>/dev/null > "$KCTL_CLUSTER_MAP.tmp" || true
-  echo "$context $version $now" >> "$KCTL_CLUSTER_MAP.tmp"
-  mv "$KCTL_CLUSTER_MAP.tmp" "$KCTL_CLUSTER_MAP"
-}
-
-# --- Helper: Query server version (fast) ---
-find_resolver_kubectl() {
-  # Prefer versions/latest/kubectl
-  if [[ -x "$KCTL_VERSIONS/latest/kubectl" ]]; then
-    echo "$KCTL_VERSIONS/latest/kubectl"
-    return 0
-  fi
-  # Otherwise, pick highest version directory with kubectl
-  if [[ -d "$KCTL_VERSIONS" ]]; then
-    # sort -Vr for semantic-like descending; filter v* entries
-    local candidate
-    candidate=$(ls -1 "$KCTL_VERSIONS" 2>/dev/null | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+' | sort -Vr | while read -r d; do
-      if [[ -x "$KCTL_VERSIONS/$d/kubectl" ]]; then echo "$KCTL_VERSIONS/$d/kubectl"; break; fi
-    done)
-    if [[ -n "${candidate:-}" ]]; then
-      echo "$candidate"
-      return 0
-    fi
-  fi
-  return 1
-}
-
-query_server_version() {
-  local resolver
-  resolver="$(find_resolver_kubectl)" || return 1
-  "$resolver" version --client=false --short 2>/dev/null | grep 'Server Version:' | awk '{print $3}'
-}
+# Source shared functions (logging, version resolution helpers, cache)
+# shellcheck source=../libexec/kctl-env-common
+source "$KCTL_ENV_ROOT/libexec/kctl-env-common"
 
 # --- Version Resolution ---
 resolve_version() {
   # 1. Env var
   if [[ -n "${KCTL_VERSION:-}" ]]; then
+    kctl_debug "version from KCTL_VERSION env: $KCTL_VERSION"
     echo "$KCTL_VERSION"
     return 0
   fi
@@ -105,14 +28,15 @@ resolve_version() {
     echo "$filever"
     return 0
   fi
-  # 3. Auto mode
+  # 3. Global version file
   if [[ -f "$KCTL_GLOBAL_VERSION_FILE" ]]; then
     local globalver
-    globalver="$(cat "$KCTL_GLOBAL_VERSION_FILE")"
+    read -r globalver < "$KCTL_GLOBAL_VERSION_FILE"
     if [[ "$globalver" == "auto" ]]; then
+      kctl_debug "global version is auto; resolving via context"
       local context version
-      context="$(get_current_context)"
-      version="$(get_cached_version_for_context "$context")"
+      context="$(get_current_context)" || { kctl_debug "auto mode: no context found, falling back to latest"; echo "latest"; return 0; }
+      version="$(get_cached_version_for_context "$context" || true)"
       if [[ -n "$version" ]]; then
         echo "$version"
         return 0
@@ -124,12 +48,15 @@ resolve_version() {
         echo "$version"
         return 0
       fi
+      kctl_debug "auto mode: could not query server version, falling back to latest"
     else
+      kctl_debug "global version: $globalver"
       echo "$globalver"
       return 0
     fi
   fi
   # 4. Fallback: latest
+  kctl_debug "using fallback version: latest"
   echo "latest"
 }
 
@@ -137,9 +64,16 @@ resolve_version() {
 main() {
   local version resolved_bin
   version="$(resolve_version)"
+
+  # Validate resolved version before constructing path
+  if ! is_valid_version "$version"; then
+    kctl_error "resolved version '$version' is invalid (source may be corrupted)"
+    exit 1
+  fi
+
   resolved_bin="$KCTL_VERSIONS/$version/kubectl"
   if [[ ! -x "$resolved_bin" ]]; then
-    echo "kctl-env: kubectl version '$version' not installed. Run: kctl-env install $version" >&2
+    kctl_error "kubectl version '$version' not installed. Run: kctl-env install $version"
     exit 1
   fi
   exec "$resolved_bin" "$@"

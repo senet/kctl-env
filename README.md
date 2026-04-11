@@ -150,6 +150,73 @@ source "${KCTL_ENV_ROOT:-$HOME/.kctl-env}/etc/kctl-env-completion.zsh"
 - Apple Silicon: set `KCTL_ARCH=amd64` when installing older versions lacking arm64 builds to use Rosetta emulation.
 - Auto mode cache TTL can be tuned with `KCTL_CLUSTER_TTL` (default: 300 seconds).
 
+## Architecture
+
+![kctl-env system architecture](kctl_env_architecture.svg)
+
+All `libexec/` scripts and the shim share common functions via `libexec/kctl-env-common` (version resolution helpers, cache management, logging, input validation).
+
+For a deep dive into internals — version resolution chain, data flows, security model, and directory layout — see [ARCHITECTURE.md](ARCHITECTURE.md).
+
+## Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `KCTL_ENV_ROOT` | `~/.kctl-env` | Root directory for kctl-env data |
+| `KCTL_VERSION` | *(unset)* | Override kubectl version for the current process (highest priority) |
+| `KCTL_ARCH` | *(auto-detected)* | Override architecture (`amd64`/`arm64`) for installs |
+| `KCTL_CLUSTER_TTL` | `300` | Seconds before auto-mode re-queries the cluster server version |
+| `KCTL_ENV_DEBUG` | *(unset)* | Set to `1` to enable debug logging to stderr |
+| `GITHUB_TOKEN` | *(unset)* | GitHub API token for `list-remote` (avoids rate limits) |
+
+## Troubleshooting
+
+### `kctl-env: command not found`
+
+Ensure `~/.kctl-env/bin` is in your `PATH`. Add to your shell rc file:
+
+```sh
+export PATH="$HOME/.kctl-env/bin:$PATH"
+```
+
+Then reload your shell: `exec "$SHELL"`.
+
+### `kubectl version 'vX.Y.Z' not installed`
+
+The shim resolved a version that hasn't been downloaded yet. Install it:
+
+```sh
+kctl-env install vX.Y.Z
+```
+
+### Auto mode shows "latest" instead of matching cluster version
+
+Auto mode needs a valid kubeconfig with a current context set and at least one installed kubectl binary to query the server. Verify:
+
+1. `kubectl config current-context` returns a valid context
+2. At least one version is installed: `kctl-env list`
+3. Cache may be expired — run `kubectl version` once to repopulate
+
+Enable debug logging for detailed resolution info:
+
+```sh
+KCTL_ENV_DEBUG=1 kubectl version --client
+```
+
+### WSL: `Permission denied` or PATH issues
+
+On WSL, the installer updates your shell rc file. If PATH wasn't set up:
+
+1. Re-run the installer: `curl -fsSL ... | bash -s -- main`
+2. Or manually add the PATH export (see above)
+3. Check for duplicate marker blocks: `grep -c 'kctl-env' ~/.bashrc`
+
+### Checksum verification failed
+
+This means the downloaded binary doesn't match the expected SHA256 hash. Possible causes:
+- Network corruption — retry the install
+- Version does not exist for your OS/architecture — try `KCTL_ARCH=amd64`
+
 ## Roadmap & TODO
 
 Next 6 months: Month 1—CI across Ubuntu/macOS/WSL, release automation, and security hardening.

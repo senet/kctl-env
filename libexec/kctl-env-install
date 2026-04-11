@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-KCTL_ENV_ROOT="${KCTL_ENV_ROOT:-$HOME/.kctl-env}"
-KCTL_VERSIONS="$KCTL_ENV_ROOT/versions"
-KCTL_CACHE="$KCTL_ENV_ROOT/cache"
+# Source shared functions
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=kctl-env-common
+source "$script_dir/kctl-env-common"
 
 version_arg="${1:-}"
 if [[ -z "$version_arg" ]]; then
@@ -48,6 +49,14 @@ fi
 
 version="$(resolve_version "$version_arg")"
 
+# Check if already installed
+if [[ -x "$KCTL_VERSIONS/$version/kubectl" ]]; then
+  kctl_info "kubectl $version is already installed at $KCTL_VERSIONS/$version"
+  exit 0
+fi
+
+kctl_info "installing kubectl $version ($os/$arch)..."
+
 # Compose URLs
 url_base="https://dl.k8s.io/release/$version/bin/$os/$arch"
 kubectl_url="$url_base/kubectl"
@@ -90,4 +99,4 @@ if [[ "$version_arg" == "latest" || "$version_arg" == "stable" ]]; then
   ln -sfn "$install_dir" "$KCTL_VERSIONS/latest"
 fi
 
-echo "Installed kubectl $version ($os/$arch) to $install_dir"
+kctl_info "installed kubectl $version ($os/$arch) to $install_dir"

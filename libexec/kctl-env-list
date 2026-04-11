@@ -4,11 +4,10 @@ set -euo pipefail
 # kctl-env list — show locally installed kubectl versions
 # Marks the active version with * and shows the source.
 
-KCTL_ENV_ROOT="${KCTL_ENV_ROOT:-$HOME/.kctl-env}"
-KCTL_VERSIONS="$KCTL_ENV_ROOT/versions"
-KCTL_GLOBAL_VERSION_FILE="$KCTL_ENV_ROOT/version"
-KCTL_CLUSTER_MAP="$KCTL_ENV_ROOT/cache/cluster-map"
-KCTL_CLUSTER_TTL="${KCTL_CLUSTER_TTL:-300}"
+# Source shared functions
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=kctl-env-common
+source "$script_dir/kctl-env-common"
 
 # --- Resolve active version and its source ---
 
@@ -20,13 +19,17 @@ resolve_active_version() {
     return 0
   fi
 
-  # 2. .kubectl-version file (traverse up from cwd)
+  # 2. .kubectl-version file (traverse up from cwd) — reuse shared validation
   local dir="$PWD"
   while [[ "$dir" != "/" ]]; do
     if [[ -f "$dir/.kubectl-version" ]]; then
-      cat "$dir/.kubectl-version"
-      echo "$dir/.kubectl-version"
-      return 0
+      local ver
+      read -r ver < "$dir/.kubectl-version"
+      if is_valid_version "$ver"; then
+        echo "$ver"
+        echo "$dir/.kubectl-version"
+        return 0
+      fi
     fi
     dir="$(dirname "$dir")"
   done
@@ -34,7 +37,7 @@ resolve_active_version() {
   # 3. Global version file
   if [[ -f "$KCTL_GLOBAL_VERSION_FILE" ]]; then
     local gv
-    gv="$(cat "$KCTL_GLOBAL_VERSION_FILE")"
+    read -r gv < "$KCTL_GLOBAL_VERSION_FILE"
     echo "$gv"
     echo "$KCTL_GLOBAL_VERSION_FILE"
     return 0
@@ -43,34 +46,9 @@ resolve_active_version() {
   return 1
 }
 
-# --- Resolve auto mode via cluster-map cache (mirrors bin/kubectl logic) ---
-
-get_current_context() {
-  local config="$HOME/.kube/config"
-  [[ -f "$config" ]] || return 1
-  local ctx
-  ctx="$(grep 'current-context:' "$config" | awk '{print $2}')"
-  [[ -n "$ctx" ]] && echo "$ctx" && return 0
-  return 1
-}
-
-get_cached_version_for_context() {
-  local context="$1" now ts
-  now=$(date +%s)
-  [[ -f "$KCTL_CLUSTER_MAP" ]] || return 1
-  while read -r c v t; do
-    [[ "$c" != "$context" ]] && continue
-    ts=${t:-0}
-    if [[ $((now - ts)) -lt $KCTL_CLUSTER_TTL ]]; then
-      echo "$v"
-      return 0
-    fi
-  done < "$KCTL_CLUSTER_MAP"
-  return 1
-}
+# --- Resolve auto mode via cluster-map cache (uses shared helpers) ---
 
 # Outputs two lines on success (line 1: resolved version, line 2: kube context name)
-# and returns 0, or returns 1 when context or cached version cannot be determined.
 resolve_auto() {
   local context cached_version
   context="$(get_current_context)" || return 1
@@ -121,51 +99,7 @@ while IFS= read -r v; do
 done < <(
   raw_versions="$(ls -1 "$KCTL_VERSIONS" 2>/dev/null | grep -E '^v' || true)"
   [[ -z "$raw_versions" ]] && exit 0
-  if sort -V </dev/null >/dev/null 2>&1; then
-    # GNU sort available (Linux / newer macOS with coreutils)
-    printf '%s\n' "$raw_versions" | sort -Vr
-  else
-    # POSIX fallback: sort semantic versions, including pre-releases.
-    # Stable releases sort above pre-releases for the same MAJOR.MINOR.PATCH,
-    # and rc.N pre-releases sort numerically among themselves.
-    printf '%s\n' "$raw_versions" |
-      awk '
-        {
-          ver = $0
-          norm = ver
-          sub(/^v/, "", norm)
-
-          prerelease = ""
-          split(norm, parts, "-")
-          core = parts[1]
-          if (length(norm) > length(core)) {
-            prerelease = substr(norm, length(core) + 2)
-          }
-
-          split(core, nums, ".")
-          major = nums[1] + 0
-          minor = nums[2] + 0
-          patch = nums[3] + 0
-
-          stable_rank = 1
-          prerelease_rank = -1
-          prerelease_label = ""
-
-          if (prerelease != "") {
-            stable_rank = 0
-            prerelease_label = prerelease
-            if (prerelease ~ /^rc\.[0-9]+$/) {
-              split(prerelease, rc_parts, ".")
-              prerelease_rank = rc_parts[2] + 0
-            }
-          }
-
-          printf "%s\t%d\t%d\t%d\t%d\t%d\t%s\n", ver, major, minor, patch, stable_rank, prerelease_rank, prerelease_label
-        }
-      ' |
-      sort -t "$(printf '\t')" -k2,2nr -k3,3nr -k4,4nr -k5,5nr -k6,6nr -k7,7r |
-      awk -F "$(printf '\t')" '{ print $1 }'
-  fi
+  printf '%s\n' "$raw_versions" | sort_versions_desc
 )
 
 if [[ ${#versions[@]} -eq 0 ]]; then

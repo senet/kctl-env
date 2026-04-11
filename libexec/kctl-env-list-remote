@@ -10,6 +10,11 @@ set -euo pipefail
 # - Unauthenticated GitHub API requests are rate-limited.
 # - Increase limits by exporting GITHUB_TOKEN.
 
+# Source shared functions
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=kctl-env-common
+source "$script_dir/kctl-env-common"
+
 MAX_PAGES="${KCTL_LIST_REMOTE_MAX_PAGES:-5}"
 PER_PAGE=100
 
@@ -38,20 +43,4 @@ while [[ "$page" -le "$MAX_PAGES" ]]; do
   printf '%s\n' "$tags"
   page=$((page + 1))
 done |
-  if sort -V </dev/null >/dev/null 2>&1; then
-    # Prefer GNU sort's version sort when available.
-    sort -Vr | uniq
-  else
-    # POSIX fallback: sort semantic versions vMAJOR.MINOR.PATCH numerically.
-    awk -F. '
-      {
-        ver = $0
-        # Strip leading "v" from major component.
-        sub(/^v/, "", $1)
-        # Print: original major minor patch
-        printf "%s %d %d %d\n", ver, $1, $2, $3
-      }
-    ' |
-      sort -k2,2nr -k3,3nr -k4,4nr |
-      awk '!seen[$1]++ { print $1 }'
-  fi
+  sort_versions_desc | uniq

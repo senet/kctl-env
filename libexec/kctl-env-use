@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-KCTL_ENV_ROOT="${KCTL_ENV_ROOT:-$HOME/.kctl-env}"
+# Source shared functions
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=kctl-env-common
+source "$script_dir/kctl-env-common"
+
 version_file="$KCTL_ENV_ROOT/version"
 
 version="${1:-}"
@@ -16,5 +20,16 @@ case "$version" in
   *) version="v$version" ;;
 esac
 
+# Validate version format
+if ! is_valid_version "$version"; then
+  kctl_error "invalid version '$version'. Expected: auto, latest, stable, or vX.Y.Z"
+  exit 1
+fi
+
+# Warn if specific version is not installed (non-blocking)
+if [[ "$version" =~ ^v[0-9] && ! -x "$KCTL_VERSIONS/$version/kubectl" ]]; then
+  kctl_warn "$version is not installed. Run: kctl-env install $version"
+fi
+
 echo "$version" > "$version_file"
-echo "kctl-env: set global version to '$version'"
+kctl_info "set global version to '$version'"
